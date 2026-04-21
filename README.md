@@ -10,6 +10,10 @@ With Permission Manager, you can create users, assign namespaces/permissions, an
 
 The lastest image is: h2372/permission-manager:v1
 
+## Changelog tags:
+v1: fix some minor bugs, add support for k8s v1.35
+
+
 ## Screenshots
 
 ### First Page
