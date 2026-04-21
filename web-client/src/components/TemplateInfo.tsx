@@ -7,10 +7,41 @@ interface TemplateInfoParameters {
  readonly hideNamespaceCol?: boolean;
 }
 
+interface AggregatedPermission {
+  read: boolean;
+  write: boolean;
+  namespaces: string[];
+}
+
 export default function TemplateInfo({ruleSets, hideNamespaceCol}: TemplateInfoParameters) {
+  const aggregatedPermissions: Record<string, AggregatedPermission> = {};
+
+  ruleSets.forEach(({ rules, namespaces }) => {
+    rules.forEach(rule => {
+      const isRead = rule.verbs.includes('*') || rule.verbs.includes('get') || rule.verbs.includes('list') || rule.verbs.includes('watch') || rule.verbs.includes('read');
+      const isWrite = rule.verbs.includes('*') || rule.verbs.includes('create') || rule.verbs.includes('update') || rule.verbs.includes('patch') || rule.verbs.includes('delete');
+      
+      rule.resources.forEach(res => {
+        if (!aggregatedPermissions[res]) {
+          aggregatedPermissions[res] = { read: false, write: false, namespaces: [] };
+        }
+        if (isRead) aggregatedPermissions[res].read = true;
+        if (isWrite) aggregatedPermissions[res].write = true;
+        
+        namespaces.forEach(ns => {
+          if (!aggregatedPermissions[res].namespaces.includes(ns)) {
+            aggregatedPermissions[res].namespaces.push(ns);
+          }
+        });
+      });
+    });
+  });
+
+  const resourceEntries = Object.entries(aggregatedPermissions).sort((a, b) => a[0].localeCompare(b[0]));
+
   return (
-    <fieldset disabled={true}>
-      <table className="text-left">
+    <fieldset disabled={true} className="border border-gray-100 rounded-lg overflow-hidden shadow-inner bg-gray-50/50">
+      <table className="text-left w-full border-collapse">
         <colgroup>
           <col width="160"/>
           <col width="60"/>
@@ -18,83 +49,72 @@ export default function TemplateInfo({ruleSets, hideNamespaceCol}: TemplateInfoP
           {hideNamespaceCol ? null : <col/>}
         </colgroup>
 
-        <thead className="text-gray-700 text-xs uppercase">
-        <tr>
-          <th className="px-3">resource</th>
-          <th className="px-3">read</th>
-          <th className="px-3">write</th>
-          {hideNamespaceCol ? null : <th className="px-3">namespaces</th>}
-        </tr>
+        <thead className="bg-gray-100/80">
+          <tr className="text-gray-500 text-[10px] font-black uppercase tracking-widest border-b border-gray-200">
+            <th className="py-3 px-4">resource</th>
+            <th className="py-3 px-4 text-center">read</th>
+            <th className="py-3 px-4 text-center">write</th>
+            {hideNamespaceCol ? null : <th className="py-3 px-4">namespaces</th>}
+          </tr>
         </thead>
 
         <tbody className="text-gray-700 text-xs">
-        <tr className="bg-gray-200 h-2"/>
-        {ruleSets.map(({rules, namespaces}, index) => {
-          return rules.map((rule, index) => {
-            return (
-              <React.Fragment key={index}>
-                {rule.resources.map((res, i) => {
-                  const r =
-                    rule.verbs.includes('*') || rule.verbs.includes('read')
-                  const rw =
-                    rule.verbs.includes('*') || rule.verbs.includes('create')
-                  return (
-                    <tr
-                      key={i}
-                      className={`h-1 ${
-                        i % 2 === 0 ? 'bg-gray-200' : 'bg-gray-100'
-                      }`}
-                    >
-                      <td className="py-0 px-3">
-                        <div className="flex items-center">
-                          {res.replace(
-                            templateNamespacedResourceRolePrefix,
-                            '',
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-0 px-3">
-                        <div className="flex items-center justify-center">
-                          <label className="my-1 mx-0 block uppercase tracking-wide text-gray-700 text-xs mb-2">
-                            <input
-                              type="checkbox"
-                              checked={r}
-                              onChange={() => {
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </td>
+          {resourceEntries.length === 0 ? (
+            <tr>
+              <td colSpan={hideNamespaceCol ? 3 : 4} className="py-4 px-4 text-center text-gray-400 italic">
+                No resource permissions defined.
+              </td>
+            </tr>
+          ) : (
+            resourceEntries.map(([res, perms], index) => {
+              const displayName = res.replace(templateNamespacedResourceRolePrefix, '');
+              return (
+                <tr
+                  key={res}
+                  className={`border-b border-gray-100 last:border-0 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                >
+                  <td className="py-2 px-4 font-bold text-gray-800">
+                    {displayName}
+                  </td>
+                  <td className="py-2 px-4">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 accent-teal-600"
+                        checked={perms.read}
+                        readOnly
+                      />
+                    </div>
+                  </td>
 
-                      <td className="py-0 px-3">
-                        <div className="flex items-center justify-center">
-                          <label className="my-1 mx-0 block uppercase tracking-wide text-gray-700 text-xs mb-2">
-                            <input
-                              type="checkbox"
-                              checked={rw}
-                              onChange={() => {
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </td>
+                  <td className="py-2 px-4">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                        checked={perms.write}
+                        readOnly
+                      />
+                    </div>
+                  </td>
 
-                      {hideNamespaceCol ? null : (
-                        <td className="py-0 px-3">
-                          <div className="flex items-center justify-center">
-                            {namespaces.length > 0
-                              ? namespaces.join(', ')
-                              : namespaces[0]}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  )
-                })}
-              </React.Fragment>
-            )
-          })
-        })}
+                  {hideNamespaceCol ? null : (
+                    <td className="py-2 px-4 text-[10px] text-gray-500 font-medium">
+                      <div className="flex flex-wrap gap-1">
+                        {perms.namespaces.length > 0 ? (
+                          perms.namespaces.map(ns => (
+                            <span key={ns} className="bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">{ns}</span>
+                          ))
+                        ) : (
+                          <span className="text-gray-300 italic">None</span>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              )
+            })
+          )}
         </tbody>
       </table>
     </fieldset>

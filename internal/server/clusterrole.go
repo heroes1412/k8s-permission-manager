@@ -23,7 +23,31 @@ func createClusterRole(c echo.Context) error {
 	_, err = ac.ResourceManager.ClusterRoleCreate(r.RoleName, r.Rules)
 
 	if err != nil {
+		return ac.errorResponse(err.Error())
+	}
+
+	return ac.okResponse()
+}
+
+func updateClusterRole(c echo.Context) error {
+	type Request struct {
+		RoleName string              `json:"roleName" validate:"required"`
+		Rules    []rbacv1.PolicyRule `json:"rules" validate:"required"`
+	}
+	ac := c.(*AppContext)
+
+	r := new(Request)
+
+	err := ac.validateAndBindRequest(r)
+
+	if err != nil {
 		return err
+	}
+
+	_, err = ac.ResourceManager.ClusterRoleUpdate(r.RoleName, r.Rules)
+
+	if err != nil {
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()
@@ -47,7 +71,7 @@ func deleteClusterRole(c echo.Context) error {
 	err = ac.ResourceManager.ClusterRoleDelete(r.RoleName)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()

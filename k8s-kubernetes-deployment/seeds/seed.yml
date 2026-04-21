@@ -1,0 +1,165 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-namespaced-resources___operation
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-namespaced-resources___developer
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "configmaps"
+      - "endpoints"
+      - "persistentvolumeclaims"
+      - "pods"
+      - "pods/log"
+      - "pods/portforward"
+      - "podtemplates"
+      - "replicationcontrollers"
+      - "resourcequotas"
+      - "secrets"
+      - "services"
+      - "events"
+      - "daemonsets"
+      - "deployments"
+      - "replicasets"
+      - "ingresses"
+      - "networkpolicies"
+      - "poddisruptionbudgets"
+    verbs:
+      - "*"
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["*"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-namespaced-resources___view
+rules:
+  - apiGroups:
+      - "*"
+    resources:
+      - "configmaps"
+      - "endpoints"
+      - "persistentvolumeclaims"
+      - "pods"
+      - "pods/log"
+      - "podtemplates"
+      - "replicationcontrollers"
+      - "resourcequotas"
+      - "secrets"
+      - "services"
+      - "events"
+      - "daemonsets"
+      - "deployments"
+      - "replicasets"
+      - "ingresses"
+      - "networkpolicies"
+      - "poddisruptionbudgets"
+    verbs:
+      - "get"
+      - "list"
+      - "watch"
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-cluster-resources___read-only
+rules:
+  # yamllint disable-line rule:line-length
+  # INIT: Copied from https://github.com/lensapp/lens/pull/644/files#diff-e8fd9c95df786da51f13c3a7442a1d88b3ac4294b786bc268ac92a4072bf50e7R5-R198
+  # Solves issue #43 with the PR #45
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "*"
+    resources:
+      - "componentstatuses"
+      - "namespaces"
+      - "nodes"
+      - "persistentvolumes"
+      - "mutatingwebhookconfigurations"
+      - "validatingwebhookconfigurations"
+      - "customresourcedefinitions"
+      - "apiservices"
+      - "tokenreviews"
+      - "selfsubjectaccessreviews"
+      - "selfsubjectrulesreviews"
+      - "subjectaccessreviews"
+      - "certificatesigningrequests"
+      - "runtimeclasses"
+      - "podsecuritypolicies"
+      - "clusterrolebindings"
+      - "clusterroles"
+      - "priorityclasses"
+      - "csidrivers"
+      - "csinodes"
+      - "storageclasses"
+      - "volumeattachment"
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: template-cluster-resources___admin
+rules:
+  # yamllint disable-line rule:line-length
+  # INIT: Copied from https://github.com/lensapp/lens/pull/644/files#diff-e8fd9c95df786da51f13c3a7442a1d88b3ac4294b786bc268ac92a4072bf50e7R5-R198
+  # Solves issue #43 with the PR #45
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "*"
+    resources:
+      - "componentstatuses"
+      - "namespaces"
+      - "nodes"
+      - "persistentvolumes"
+      - "mutatingwebhookconfigurations"
+      - "validatingwebhookconfigurations"
+      - "customresourcedefinitions"
+      - "apiservices"
+      - "tokenreviews"
+      - "selfsubjectaccessreviews"
+      - "selfsubjectrulesreviews"
+      - "subjectaccessreviews"
+      - "certificatesigningrequests"
+      - "runtimeclasses"
+      - "podsecuritypolicies"
+      - "clusterrolebindings"
+      - "clusterroles"
+      - "priorityclasses"
+      - "csidrivers"
+      - "csinodes"
+      - "storageclasses"
+      - "volumeattachment"
+    verbs: ["*"]

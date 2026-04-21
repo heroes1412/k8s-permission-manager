@@ -3,7 +3,7 @@ import {httpClient} from '../../services/httpClient'
 import JSONPretty from 'react-json-pretty'
 import {RESOURCE_TYPES_NAMESPACED, RESOURCE_TYPES_NON_NAMESPACED, VERBS} from '../../constants'
 import {useRbac} from '../../hooks/useRbac'
-import uuid from 'uuid'
+import { v4 as uuid } from 'uuid'
 
 export default () => {
   const { clusterRoles, refreshRbacData } = useRbac()

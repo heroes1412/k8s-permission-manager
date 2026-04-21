@@ -12,7 +12,7 @@ func listUsers(c echo.Context) error {
 	users, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.List()
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponseWithData(users)
@@ -42,10 +42,10 @@ func createUser(c echo.Context) error {
 	u, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.Create(r.Name)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
-	return ac.okResponseWithData(response{Name: u.Name})
+	return ac.okResponseWithData(u)
 }
 
 func deleteUser(c echo.Context) error {
@@ -66,7 +66,7 @@ func deleteUser(c echo.Context) error {
 	err = ac.ResourceManager.V1Alpha1PermissionManagerUser.Delete(r.Username)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()

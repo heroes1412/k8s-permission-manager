@@ -3,6 +3,7 @@ package resources
 import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 
@@ -15,11 +16,13 @@ type RoleBindingRequirements struct {
 
 
 func (r *Manager) RoleBindingCreate(namespace, username string, rbReq RoleBindingRequirements) (*rbacv1.RoleBinding, error) {
+	username = SanitizeUsername(username)
+	roleBindingName := SanitizeUsername(rbReq.RolebindingName)
 
 	rb, err := r.kubeclient.RbacV1().RoleBindings(namespace).Create(r.context,
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      rbReq.RolebindingName,
+				Name:      roleBindingName,
 				Namespace: namespace,
 				Labels:    map[string]string{"generated_for_user": username},
 			},
@@ -30,6 +33,10 @@ func (r *Manager) RoleBindingCreate(namespace, username string, rbReq RoleBindin
 			},
 			Subjects: rbReq.Subjects,
 		}, metav1.CreateOptions{})
+
+	if apierrors.IsAlreadyExists(err) {
+		return r.kubeclient.RbacV1().RoleBindings(namespace).Get(r.context, roleBindingName, metav1.GetOptions{})
+	}
 
 	if err != nil {
 		return nil, err
@@ -58,7 +65,7 @@ func (r *Manager) RoleBindingLegacyCheck(namespace string, username string) (rol
 
 	for _, roleBinding := range (*roleBindings).Items {
 		for _, rbSubjects := range roleBinding.Subjects {
-			if rbSubjects.Name == username && rbSubjects.Kind == "User" {
+			if (rbSubjects.Name == username || rbSubjects.Name == SanitizeUsername(username)) && rbSubjects.Kind == "User" {
 				roleBindingToMigrate = &roleBinding
 			}
 		}

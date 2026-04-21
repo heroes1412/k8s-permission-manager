@@ -57,6 +57,38 @@ class HttpRequests {
       username: username, namespaces: namespaces
     })
   }
+
+  public namespaceCreate(name: string) {
+    return this.httpClient.post('/api/create-namespace', {
+      name: name
+    })
+  }
+
+  public namespaceDelete(name: string) {
+    return this.httpClient.post('/api/delete-namespace', {
+      name: name
+    })
+  }
+
+  public clusterRoleCreate(roleName: string, rules: any[]) {
+    return this.httpClient.post('/api/create-cluster-role', {
+      roleName: roleName,
+      rules: rules
+    })
+  }
+
+  public clusterRoleUpdate(roleName: string, rules: any[]) {
+    return this.httpClient.post('/api/update-cluster-role', {
+      roleName: roleName,
+      rules: rules
+    })
+  }
+
+  public clusterRoleDelete(roleName: string) {
+    return this.httpClient.post('/api/delete-cluster-role', {
+      roleName: roleName
+    })
+  }
 }
 
 

@@ -80,6 +80,7 @@ func addRoutes(e *echo.Echo) {
 	api.GET("/rbac", listRbac)
 
 	api.POST("/create-cluster-role", createClusterRole)
+	api.POST("/update-cluster-role", updateClusterRole)
 	api.POST("/create-user", createUser)
 	api.POST("/create-rolebinding", createRoleBinding)
 	api.POST("/create-cluster-rolebinding", createClusterRolebinding)
@@ -93,4 +94,6 @@ func addRoutes(e *echo.Echo) {
 
 	api.POST("/create-kubeconfig", createKubeconfig)
 	api.POST("/check-legacy-user", checkLegacyUser)
+	api.POST("/create-namespace", createNamespace)
+	api.POST("/delete-namespace", deleteNamespace)
 }

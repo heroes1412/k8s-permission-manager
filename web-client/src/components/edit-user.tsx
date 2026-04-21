@@ -55,16 +55,27 @@ export default function EditUser({ user }: EditUserParameters) {
   }, [refreshRbacData])
 
   useEffect(() => {
+    if (roleBindings === null || clusterRoleBindings === null) {
+      return;
+    }
+
     let { extractedPairItems } = extractUsersRoles(roleBindings, clusterRoleBindings, username);
 
+    let timer: NodeJS.Timeout;
     if (extractedPairItems.length === 0) {
-      setRoleBindingNotFound(true);
+      timer = setTimeout(() => {
+        setRoleBindingNotFound(true);
+      }, 1500);
     } else {
       setRoleBindingNotFound(false);
     }
 
     // we proceed to bootstrap aggregatedRoleBindings
     setAggregatedRoleBindings(extractedPairItems)
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [roleBindings, username, clusterRoleBindings])
 
   useEffect(() => {
@@ -201,7 +212,7 @@ export default function EditUser({ user }: EditUserParameters) {
       )}
       <div className="flex content-between items-center mb-4">
         <h2 className="text-3xl text-gray-800">
-          User: <span data-testid="username-heading">{username}</span>
+          User: <span data-testid="username-heading">{user.friendlyName || username}</span>
         </h2>
         <div>
           <button

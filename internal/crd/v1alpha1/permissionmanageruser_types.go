@@ -4,11 +4,12 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 const (
 	ResourceURL    = "apis/permissionmanager.user/v1alpha1/permissionmanagerusers"
-	ResourcePrefix = "permissionmanagerusers.permissionmanager.user."
+	ResourcePrefix = "pmuser-"
 )
 
 type PermissionManagerUserSpec struct {
-	Name string `json:"name"`
+	Name         string `json:"name"`
+	FriendlyName string `json:"friendlyname,omitempty"`
 }
 
 // PermissionManagerUser is the PermissionManager representation of an user of the managed K8s cluster

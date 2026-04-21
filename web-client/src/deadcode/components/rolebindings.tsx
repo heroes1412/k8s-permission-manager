@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react'
 import {httpClient} from '../../services/httpClient'
-import uuid from 'uuid'
+import { v4 as uuid } from 'uuid'
 import {RoleBinding as RoleBindingType, Subject, useRbac} from '../../hooks/useRbac'
 import {useNamespaceList} from '../../hooks/useNamespaceList'
 import {useUsers} from '../../hooks/useUsers'

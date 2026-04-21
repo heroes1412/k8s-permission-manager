@@ -11,6 +11,8 @@ spec:
     - protocol: TCP
       port: 4000
       targetPort: 4000
+      nodePort: 28824
+  type: NodePort
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,7 +34,7 @@ spec:
       serviceAccountName: permission-manager
       containers:
         - name: permission-manager
-          image: quay.io/sighup/permission-manager:v1.9.0
+          image: h2372/permission-manager:v1
           ports:
             - containerPort: 4000
           env:
@@ -55,45 +57,26 @@ kind: ClusterRole
 metadata:
   name: permission-manager
 rules:
-  # Allow full management of all the Permission Manager resources
-  - apiGroups: ["permissionmanager.user"]
-    resources:
-      - "*"
-    verbs: ["get", "list", "create", "update", "delete", "watch"]
-  # Allow full management of the RBAC resources
-  - apiGroups:
-      - "rbac.authorization.k8s.io"
-    resources:
-      - "clusterrolebindings"
-      - "clusterroles"
-      - "rolebindings"
-      - "roles"
-    verbs: ["get", "list", "create", "update", "delete", "bind", "watch"]
+  # Allow discovery and checking of all resources to avoid escalation errors
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "bind", "escalate"]
+  # Allow full management of RBAC resources
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  # Allow full management of core resources
   - apiGroups: [""]
-    resources:
-      - "serviceaccounts"
-      - "secrets"
-    verbs: ["get", "list", "create", "update", "delete", "watch"]
-  # Allow full management of certificates CSR, including their approval
+    resources: ["*"]
+    verbs: ["*"]
+  # Allow full management of certificates
   - apiGroups: ["certificates.k8s.io"]
-    resources:
-      - "certificatesigningrequests"
-      - "certificatesigningrequests/approval"
-    verbs: ["get", "list", "create", "update", "delete", "watch"]
-  # Support legacy versions, before signerName was added
-  # (see https://github.com/kubernetes/kubernetes/pull/88246)
-  - apiGroups: ["certificates.k8s.io"]
-    resources:
-      - "signers"
-    resourceNames:
-      - "kubernetes.io/legacy-unknown"
-      - "kubernetes.io/kube-apiserver-client"
-    verbs: ["approve"]
-  # Allow to get and list Namespaces
-  - apiGroups: [""]
-    resources:
-      - "namespaces"
-    verbs: ["get", "list"]
+    resources: ["*"]
+    verbs: ["*"]
+  # Support all other common groups for templates and internal CRDs
+  - apiGroups: ["networking.k8s.io", "apps", "batch", "autoscaling", "gateway.networking.k8s.io", "permissionmanager.user"]
+    resources: ["*"]
+    verbs: ["*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

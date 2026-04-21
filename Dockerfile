@@ -1,15 +1,13 @@
 ## UI ##
-FROM node:18-alpine3.17 as ui-builder
+FROM node:20-alpine as ui-builder
 RUN mkdir /app
 COPY web-client /app
-
-ENV NODE_OPTIONS=--openssl-legacy-provider
 
 WORKDIR /app
 RUN yarn install && yarn build
 
 ## BACKEND ##
-FROM golang:1.19.5-alpine3.17 as go-base
+FROM golang:1.23-alpine as go-base
 
 ENV GOCACHE=/tmp/.go/cache
 ENV GOMODCACHE=/tmp/.go/modcache

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"sighupio/permission-manager/internal/crd/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,8 @@ type V1Alpha1PermissionManagerUser struct {
 
 // User is the API exposed data of a PermissionManagerUser resource. TODO deprecate.
 type User struct {
-	Name string `json:"name"`
+	Name         string `json:"name"`
+	FriendlyName string `json:"friendlyName,omitempty"`
 }
 
 // List returns the list of Users defined in the K8s cluster.
@@ -42,16 +44,32 @@ func (r *V1Alpha1PermissionManagerUser) List() ([]User, error) {
 	}
 
 	for _, v := range getAllUserResponse.Items {
-		users = append(users, User{Name: v.Spec.Name})
+		u := User{Name: v.Spec.Name}
+		if v.Spec.FriendlyName != "" {
+			u.FriendlyName = v.Spec.FriendlyName
+		} else {
+			u.FriendlyName = v.Spec.Name
+		}
+		users = append(users, u)
 	}
 
 	return users, nil
 }
 
+// SanitizeUsername replaces characters not allowed in Kubernetes resource names (like @ and .) with dashes.
+func SanitizeUsername(username string) string {
+	name := strings.ReplaceAll(username, "@", "-")
+	name = strings.ReplaceAll(name, ".", "-")
+	return name
+}
+
 // Create adds a new User with the given username to the K8s cluster
 // creating a new PermissionManagerUser CRD object. todo add error handling
 func (r *V1Alpha1PermissionManagerUser) Create(username string) (User, error) {
-	metadataName := v1alpha1.ResourcePrefix + username
+	friendlyName := username
+	name := SanitizeUsername(username)
+
+	metadataName := v1alpha1.ResourcePrefix + name
 
 	createUserRequest := v1alpha1.PermissionManagerUser{
 		TypeMeta: metav1.TypeMeta{
@@ -62,7 +80,8 @@ func (r *V1Alpha1PermissionManagerUser) Create(username string) (User, error) {
 			Name: metadataName,
 		},
 		Spec: v1alpha1.PermissionManagerUserSpec{
-			Name: username,
+			Name:         name,
+			FriendlyName: friendlyName,
 		},
 	}
 	jsonPayload, err := json.Marshal(createUserRequest)
@@ -75,11 +94,14 @@ func (r *V1Alpha1PermissionManagerUser) Create(username string) (User, error) {
 	_, err = r.kubeclient.Discovery().RESTClient().Post().AbsPath(v1alpha1.ResourceURL).Body(jsonPayload).DoRaw(r.context)
 
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "already exists") {
+			return User{Name: name, FriendlyName: friendlyName}, nil
+		}
 		log.Printf("Failed to create PermissionManagerUser:%s\n %v\n", username, err)
 		return User{}, err
 	}
 
-	return User{Name: username}, nil
+	return User{Name: name, FriendlyName: friendlyName}, nil
 }
 
 // Delete delete an existing User from the K8s cluster removing

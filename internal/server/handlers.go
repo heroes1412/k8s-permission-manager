@@ -143,3 +143,49 @@ func createKubeconfig(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, Response{Ok: true, Kubeconfig: kubeCfg})
 }
+
+func createNamespace(c echo.Context) error {
+	type Request struct {
+		Name string `json:"name"`
+	}
+	type Response struct {
+		Ok bool `json:"ok"`
+	}
+
+	ac := c.(*AppContext)
+	r := new(Request)
+
+	if err := ac.validateAndBindRequest(r); err != nil {
+		return err
+	}
+
+	if err := ac.ResourceManager.NamespaceCreate(r.Name); err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusOK, Response{Ok: true})
+}
+
+func deleteNamespace(c echo.Context) error {
+	type Request struct {
+		Name string `json:"name"`
+	}
+	type Response struct {
+		Ok       bool   `json:"ok"`
+		ErrorMsg string `json:"errorMsg,omitempty"`
+	}
+
+	ac := c.(*AppContext)
+	r := new(Request)
+
+	if err := ac.validateAndBindRequest(r); err != nil {
+		return err
+	}
+
+	if err := ac.ResourceManager.NamespaceDelete(r.Name); err != nil {
+		// Send the error message cleanly so the UI can display it
+		return c.JSON(http.StatusBadRequest, Response{Ok: false, ErrorMsg: err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, Response{Ok: true})
+}

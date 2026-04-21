@@ -1,4 +1,4 @@
-import {resourceSeparator, templateClusterResourceRolePrefix} from "../constants";
+import {resourceSeparator, templateClusterResourceRolePrefix, templateNamespacedResourceRolePrefix} from "../constants";
 import {ClusterAccess} from "../components/types";
 import {AxiosInstance, AxiosResponse} from "axios";
 import {AggregatedRoleBinding} from "./role";
@@ -142,10 +142,16 @@ export class RolebindingCreateRequests {
       }
     ]
 
+    const getShortTemplateName = (fullName: string) => {
+      return fullName
+        .replace(templateNamespacedResourceRolePrefix, '')
+        .replace(templateClusterResourceRolePrefix, '');
+    }
+
     // we grab all the 'ALL_NAMESPACE' rolebindings and create them on the backend
     for (const allNamespaceRolebinding of aggregatedRoleBindings.filter(e => e.namespaces === 'ALL_NAMESPACES')) {
-      // we construct the resource name
-      const clusterRolebindingName = username + resourceSeparator + allNamespaceRolebinding.template + 'all_namespaces'
+      // we construct the resource name - shortened to fit 63 char limit
+      const clusterRolebindingName = username + resourceSeparator + getShortTemplateName(allNamespaceRolebinding.template) + '-all'
 
       // means that we already created the resource
       if (consumed.includes(clusterRolebindingName)) continue;
@@ -165,11 +171,11 @@ export class RolebindingCreateRequests {
     for (const namespacedRoleBinding of aggregatedRoleBindings.filter(e => e.namespaces !== 'ALL_NAMESPACES')) {
       for (const namespace of namespacedRoleBinding.namespaces) {
 
-        // we construct the resource name
-        const rolebindingName = username + resourceSeparator + namespacedRoleBinding.template + resourceSeparator + namespace
+        // we construct the resource name - shortened and removed redundant namespace (already unique in ns)
+        const rolebindingName = username + resourceSeparator + getShortTemplateName(namespacedRoleBinding.template)
 
         // means that we already created the resource
-        if (consumed.includes(rolebindingName)) continue;
+        if (consumed.includes(rolebindingName + resourceSeparator + namespace)) continue;
 
         await this.rolebinding({
           template: namespacedRoleBinding.template,
@@ -180,7 +186,7 @@ export class RolebindingCreateRequests {
           roleKind: 'ClusterRole'
         });
 
-        consumed.push(rolebindingName)
+        consumed.push(rolebindingName + resourceSeparator + namespace)
 
       }
     }

@@ -26,6 +26,8 @@ func (r *Manager) ServiceAccountCreate(namespace, name string) (*v1.ServiceAccou
 
 // ServiceAccountCreateKubeConfigForUser Creates a ServiceAccount for the user and returns the KubeConfig with its token
 func (r *Manager) ServiceAccountCreateKubeConfigForUser(cluster config.ClusterConfig, username, kubeConfigNamespace string) (kubeconfigYAML string) {
+	friendlyName := username
+	username = SanitizeUsername(username)
 
 	serviceAccountNamespace := cluster.Namespace
 
@@ -82,15 +84,15 @@ func (r *Manager) ServiceAccountCreateKubeConfigForUser(cluster config.ClusterCo
 			log.Printf("Account Secret not created: %v", err)
 		}
 
-		// try 10 times with 0.5 second interval (to wait for k8s fill the data to the newly created Secret)
-		for i := 1; i <= 10; i++ {
+		// try 20 times with 0.5 second interval (to wait for k8s fill the data to the newly created Secret)
+		for i := 1; i <= 20; i++ {
 			accountSecret, err = r.SecretGet(serviceAccountNamespace, username)
 			if err != nil {
 				log.Printf("Get Secret for account %v failed, : %v", username, err)
 				break
 			}
 
-			if accountSecret.Data["ca.crt"] != nil {
+			if accountSecret.Data["ca.crt"] != nil && len(accountSecret.Data["token"]) > 0 {
 				break
 			}
 			time.Sleep(500 * time.Millisecond)
@@ -119,7 +121,7 @@ users:
       token: %s`
 
 	return fmt.Sprintf(certificateTpl,
-		username,
+		friendlyName,
 		cluster.Name,
 		b64.StdEncoding.EncodeToString(accountSecret.Data["ca.crt"]),
 		cluster.ControlPlaneAddress,
@@ -127,7 +129,7 @@ users:
 		cluster.Name,
 		username,
 		kubeConfigNamespace,
-		username,
+		friendlyName,
 		cluster.Name,
 		username,
 		accountSecret.Data["token"],

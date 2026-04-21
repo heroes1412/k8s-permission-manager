@@ -7,11 +7,29 @@ import (
 
 func (r *Manager) ClusterRoleCreate(roleName string, rules []rbacv1.PolicyRule) (*rbacv1.ClusterRole, error) {
 	return r.kubeclient.RbacV1().ClusterRoles().Create(r.context, &rbacv1.ClusterRole{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "ClusterRole",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: roleName,
 		},
 		Rules: rules,
 	}, metav1.CreateOptions{})
+
+}
+
+func (r *Manager) ClusterRoleUpdate(roleName string, rules []rbacv1.PolicyRule) (*rbacv1.ClusterRole, error) {
+	return r.kubeclient.RbacV1().ClusterRoles().Update(r.context, &rbacv1.ClusterRole{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "rbac.authorization.k8s.io/v1",
+			Kind:       "ClusterRole",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: roleName,
+		},
+		Rules: rules,
+	}, metav1.UpdateOptions{})
 
 }
 

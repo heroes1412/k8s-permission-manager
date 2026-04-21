@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import {Dialog} from '@reach/dialog'
+import copy from 'copy-to-clipboard'
 import Editor from 'react-simple-code-editor'
 import {ClusterRoleBinding, RoleBinding, useRbac} from "../hooks/useRbac";
 import {extractUsersRoles} from "../services/role";
@@ -81,15 +82,21 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
                 className="bg-transparent hover:bg-teal-500 text-teal-700 font-semibold hover:text-white py-2 px-4 border border-teal-500 hover:border-transparent rounded"
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(kubeconfig).then(
-                    function () {
-                      setCopied(true)
-                      console.log('Async: Copying to clipboard was successful!')
-                    },
-                    function (err) {
-                      console.error('Async: Could not copy text: ', err)
-                    }
-                  )
+                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(kubeconfig).then(
+                      function () {
+                        setCopied(true)
+                      },
+                      function (err) {
+                        console.error('Async err, trying fallback... ', err)
+                        const success = copy(kubeconfig)
+                        if (success) setCopied(true)
+                      }
+                    )
+                  } else {
+                    const success = copy(kubeconfig)
+                    if (success) setCopied(true)
+                  }
                 }}
               >
                 {copied ? 'Copied' : 'Copy'}
@@ -123,21 +130,24 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
       >
         show kubeconfig for {user.name}
       </button>
-      <select
-        defaultValue={chosenNamespace}
-        onChange={e => setChosenNamespace(e.target.value)}
-        style={{
-          marginLeft: "5%"
-        }}
-      >
-            {validNamespaces.map((ns) => {
-              return (
-                <option key={ns} value={ns}>
-                  {ns}
-                </option>
-              )
-            })}
-      </select>
+      <div className="relative ml-4 inline-block shadow">
+        <select
+          defaultValue={chosenNamespace}
+          onChange={e => setChosenNamespace(e.target.value)}
+          className="block appearance-none w-full bg-white border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded leading-tight focus:outline-none focus:shadow-outline text-gray-700"
+        >
+              {validNamespaces.map((ns) => {
+                return (
+                  <option key={ns} value={ns}>
+                    {ns}
+                  </option>
+                )
+              })}
+        </select>
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+          <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+        </div>
+      </div>
     </span>
   )
 }

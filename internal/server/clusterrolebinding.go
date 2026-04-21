@@ -10,7 +10,7 @@ func createClusterRolebinding(c echo.Context) error {
 
 	type Request struct {
 		ClusterRolebindingName string           `json:"clusterRolebindingName"`
-		Username               string           `json:"user"`
+		Username               string           `json:"generated_for_user"`
 		Subjects               []rbacv1.Subject `json:"subjects"`
 		RoleName               string           `json:"roleName"`
 	}
@@ -32,7 +32,7 @@ func createClusterRolebinding(c echo.Context) error {
 	_, err = ac.ResourceManager.ClusterRoleBindingCreate(r.ClusterRolebindingName, r.Username, r.RoleName, subjs)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()
@@ -56,7 +56,7 @@ func deleteClusterRolebinding(c echo.Context) error {
 	err = ac.ResourceManager.ClusterRoleBindingDelete(r.RolebindingName)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()

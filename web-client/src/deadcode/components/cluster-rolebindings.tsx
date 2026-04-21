@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react'
-import uuid from 'uuid'
+import { v4 as uuid } from 'uuid'
 import {ClusterRoleBinding, RoleBinding as RoleBindingType, Subject, useRbac} from '../../hooks/useRbac'
 import {useUsers} from '../../hooks/useUsers'
 import {ClusterRoleSelect} from './cluster-role-select'

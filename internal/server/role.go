@@ -26,7 +26,7 @@ func deleteRole(c echo.Context) error {
 	err = ac.ResourceManager.RoleDelete(r.Namespace, r.RoleName)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()
@@ -51,7 +51,7 @@ func deleteRolebinding(c echo.Context) error {
 	err = ac.ResourceManager.RoleBindingDelete(r.Namespace, r.RolebindingName)
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()
@@ -91,7 +91,7 @@ func createRoleBinding(c echo.Context) error {
 	})
 
 	if err != nil {
-		return err
+		return ac.errorResponse(err.Error())
 	}
 
 	return ac.okResponse()
