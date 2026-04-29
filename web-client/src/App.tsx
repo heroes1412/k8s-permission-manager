@@ -12,6 +12,7 @@ import Advanced from './deadcode/views/Advanced'
 import EditUser from './views/EditUser'
 import Namespaces from './components/namespaces'
 import RoleManagement from './views/RoleManagement'
+import Settings from './views/Settings'
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
                 <Route path="/users/:username" exact component={EditUser} />
                 <Route path="/namespaces" exact component={Namespaces} />
                 <Route path="/roles" exact component={RoleManagement} />
+                <Route path="/settings" exact component={Settings} />
                 <Route path="/" exact component={Home} />
               </Switch>
             </div>

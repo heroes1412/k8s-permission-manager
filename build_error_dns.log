@@ -1,0 +1,5 @@
+unknown flag: --dns
+
+Usage:  docker buildx build [OPTIONS] PATH | URL | -
+
+Run 'docker buildx build --help' for more information

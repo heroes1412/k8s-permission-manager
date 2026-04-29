@@ -1,5 +1,5 @@
 ## UI ##
-FROM --platform=$BUILDPLATFORM node:20-alpine AS ui-builder
+FROM node:20-alpine as ui-builder
 RUN mkdir /app
 COPY web-client /app
 
@@ -7,7 +7,7 @@ WORKDIR /app
 RUN yarn install && yarn build
 
 ## BACKEND ##
-FROM golang:1.23-alpine AS go-base
+FROM golang:1.23-alpine as go-base
 
 ENV GOCACHE=/tmp/.go/cache
 ENV GOMODCACHE=/tmp/.go/modcache
@@ -33,26 +33,26 @@ WORKDIR /app
 COPY go.mod go.mod
 COPY go.sum go.sum
 
-RUN go mod download
+# Use vendor directory to bypass networking issues in Cloud Shell Docker
+COPY vendor vendor
 
 COPY cmd cmd
 COPY internal internal
 COPY static static
 
-FROM go-base AS development
+FROM go-base as development
 COPY --from=ui-builder /app/build /app/static/build
 
 ENTRYPOINT ["go", "run", "cmd/run-server.go"]
 
-FROM go-base AS builder
+FROM go-base as builder
 COPY --from=ui-builder /app/build /app/static/build
-RUN go build -trimpath -ldflags="-s -w" --tags=release -o permission-manager cmd/run-server.go
+RUN go build -mod=vendor --tags=release -o permission-manager cmd/run-server.go
 
-FROM scratch AS release
+FROM scratch as release
 
 WORKDIR /app
 COPY --from=builder /app/permission-manager /app/permission-manager
 EXPOSE 4000
 
 ENTRYPOINT ["./permission-manager"]
-

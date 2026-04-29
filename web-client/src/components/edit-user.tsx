@@ -210,15 +210,18 @@ export default function EditUser({ user }: EditUserParameters) {
           </span>
         </div>
       )}
-      <div className="flex content-between items-center mb-4">
-        <h2 className="text-3xl text-gray-800">
-          User: <span data-testid="username-heading">{user.friendlyName || username}</span>
-        </h2>
+      <div className="flex content-between items-center mb-4 border-b border-gray-100 pb-4">
         <div>
+          <h2 className="text-3xl font-black text-gray-800 tracking-tight">
+            User: <span data-testid="username-heading" className="text-teal-600">{user.friendlyName || username}</span>
+          </h2>
+          <CreateKubeconfigButton user={user} />
+        </div>
+        <div className="ml-auto">
           <button
             tabIndex={-1}
             type="button"
-            className="bg-transparent hover:bg-red-600 text-gray-700 hover:text-gray-100 py-1 px-2 rounded hover:shadow ml-2 text-xs"
+            className="bg-red-50 hover:bg-red-600 text-red-500 hover:text-white font-black py-2 px-4 rounded-xl shadow-sm transition-all transform active:scale-95 text-xs uppercase tracking-widest border border-red-100"
             onClick={() => {
               const confirmed = window.confirm(
                 `Confirm deletion of User ${username}`
@@ -232,7 +235,7 @@ export default function EditUser({ user }: EditUserParameters) {
               }
             }}
           >
-            delete
+            delete user
           </button>
         </div>
       </div>
@@ -261,12 +264,12 @@ export default function EditUser({ user }: EditUserParameters) {
         <hr className="my-6" />
 
         <button
-          className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow ${saveButtonDisabled ? ' opacity-50 cursor-not-allowed' : ''
+          className={`bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest ${saveButtonDisabled ? ' opacity-30 cursor-not-allowed grayscale' : 'shadow-teal-200'
             }`}
           disabled={saveButtonDisabled}
           type="submit"
         >
-          save
+          SAVE USER PERMISSIONS
         </button>
       </form>
 

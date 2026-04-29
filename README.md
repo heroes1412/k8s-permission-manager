@@ -12,7 +12,10 @@ The lastest image is: h2372/permission-manager:v1
 
 ## Changelog tags:
 v1: fix some minor bugs, add support for k8s v1.35
+v2: fix this, fix that, optimize this, optimize that
+v3: fix this, fix that, optimize this, optimize that
 
+docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v3 .
 
 ## Screenshots
 

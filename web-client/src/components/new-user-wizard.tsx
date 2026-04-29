@@ -137,7 +137,7 @@ export default function NewUserWizard() {
             <input
               autoFocus
               placeholder="e.g. employee.name@company.com"
-              className={`appearance-none block w-full bg-gray-50 text-gray-800 border-2 rounded-2xl py-4 px-6 leading-tight focus:outline-none focus:bg-white focus:border-teal-500 transition-all font-bold text-lg ${usernameError && formTouched ? 'border-red-500 bg-red-50' : 'border-gray-50'
+              className={`shadow-sm appearance-none border-2 rounded-xl w-full py-3.5 px-6 text-gray-800 leading-tight focus:outline-none focus:ring-4 transition-all font-bold text-base ${usernameError && formTouched ? 'border-red-500 bg-red-50 focus:ring-red-100' : 'border-gray-50 focus:ring-teal-100 focus:border-teal-500 focus:bg-white'
                 }`}
               required
               type="text"
@@ -146,7 +146,8 @@ export default function NewUserWizard() {
                 if (!formTouched) {
                   setFormTouched(true)
                 }
-                setUsername(e.target.value)
+                const filtered = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                setUsername(filtered)
               }}
             />
 
@@ -184,7 +185,7 @@ export default function NewUserWizard() {
                Discard
              </button>
              <button
-               className={`bg-teal-600 hover:bg-teal-700 text-white font-black py-4 px-12 rounded-2xl shadow-2xl transition-all transform active:scale-95 text-base tracking-widest ${saveButtonDisabled ? ' opacity-30 cursor-not-allowed grayscale' : 'shadow-teal-200'
+               className={`bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest ${saveButtonDisabled ? ' opacity-30 cursor-not-allowed grayscale' : 'shadow-teal-200'
                  }`}
                disabled={saveButtonDisabled}
                type="submit"

@@ -12,3 +12,7 @@ func (r *Manager) SecretGet(namespace, name string) (*v1.Secret, error) {
 func (r *Manager) SecretCreate(namespace string, secret *v1.Secret) (*v1.Secret, error) {
 	return r.kubeclient.CoreV1().Secrets(namespace).Create(r.context, secret, metav1.CreateOptions{})
 }
+
+func (r *Manager) SecretUpdate(namespace string, secret *v1.Secret) (*v1.Secret, error) {
+	return r.kubeclient.CoreV1().Secrets(namespace).Update(r.context, secret, metav1.UpdateOptions{})
+}

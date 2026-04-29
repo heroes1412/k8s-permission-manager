@@ -67,14 +67,13 @@ export default function TemplateInfo({ruleSets, hideNamespaceCol}: TemplateInfoP
             </tr>
           ) : (
             resourceEntries.map(([res, perms], index) => {
-              const displayName = res.replace(templateNamespacedResourceRolePrefix, '');
               return (
                 <tr
                   key={res}
                   className={`border-b border-gray-100 last:border-0 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
                 >
                   <td className="py-2 px-4 font-bold text-gray-800">
-                    {displayName}
+                    {res}
                   </td>
                   <td className="py-2 px-4">
                     <div className="flex items-center justify-center">
@@ -91,7 +90,7 @@ export default function TemplateInfo({ruleSets, hideNamespaceCol}: TemplateInfoP
                     <div className="flex items-center justify-center">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500 accent-red-600"
+                        className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 accent-teal-600"
                         checked={perms.write}
                         readOnly
                       />

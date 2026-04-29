@@ -15,16 +15,15 @@ export default function UserPage() {
   const user = users.find(u => u.name === username)
 
   return (
-    <div className=" bg-gray-200  pt-16">
-      <div className="max-w-3xl mx-auto">
-        <div className=" bg-white shadow-lg rounded-lg px-8 pt-4 pb-8 mb-4">
-          {user ? <EditUser user={user} /> : 'loading user...'}
-        </div>
-
-        <div className="pb-8">
-          <div className="mt-2">
-            {user ? <CreateKubeconfigButton user={user} /> : null}
-          </div>
+    <div className=" bg-gray-200  pt-16 min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 pb-12">
+        <div className=" bg-white shadow-xl rounded-2xl p-8 mb-4">
+          {user ? <EditUser user={user} /> : (
+            <div className="py-20 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
+                <p className="text-gray-400 font-medium italic">Loading user data from cluster...</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

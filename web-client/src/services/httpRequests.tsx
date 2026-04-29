@@ -89,6 +89,18 @@ class HttpRequests {
       roleName: roleName
     })
   }
+
+  public getSettings() {
+    return this.httpClient.get('/api/settings')
+  }
+
+  public updateSettings(settings: any) {
+    return this.httpClient.post('/api/settings', settings)
+  }
+
+  public restartApp() {
+    return this.httpClient.post('/api/restart')
+  }
 }
 
 

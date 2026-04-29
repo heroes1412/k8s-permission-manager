@@ -96,4 +96,8 @@ func addRoutes(e *echo.Echo) {
 	api.POST("/check-legacy-user", checkLegacyUser)
 	api.POST("/create-namespace", createNamespace)
 	api.POST("/delete-namespace", deleteNamespace)
+
+	api.GET("/settings", getSettings)
+	api.POST("/settings", updateSettings)
+	api.POST("/restart", restartApp)
 }

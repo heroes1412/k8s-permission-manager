@@ -34,7 +34,7 @@ export default function Home() {
               Users
             </h2>
             <Link to="/new-user">
-              <button className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-tight">
+              <button className="bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-widest uppercase">
                 <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-60H6"></path></svg>
                 CREATE NEW USER
               </button>

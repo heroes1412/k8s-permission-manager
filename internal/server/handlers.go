@@ -159,6 +159,10 @@ func createNamespace(c echo.Context) error {
 		return err
 	}
 
+	if !isValidK8sName(r.Name) {
+		return ac.errorResponse(invalidK8sNameError)
+	}
+
 	if err := ac.ResourceManager.NamespaceCreate(r.Name); err != nil {
 		return err
 	}

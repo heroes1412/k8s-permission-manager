@@ -74,7 +74,7 @@ export default function Namespaces() {
             {!showForm && (
               <button 
                 onClick={() => setShowForm(true)}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-tight"
+                className="bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-widest uppercase"
               >
                 <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-60H6"></path></svg>
                 CREATE NAMESPACE
@@ -101,16 +101,19 @@ export default function Namespaces() {
                   </label>
                   <input
                     type="text"
-                    className="shadow-sm border-2 border-gray-100 rounded-xl w-full py-3.5 px-6 text-gray-700 leading-tight focus:outline-none focus:border-teal-500 transition-all font-bold text-base"
+                    className="shadow-sm border-2 border-gray-100 rounded-xl w-full py-3.5 px-6 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-teal-100 focus:border-teal-500 transition-all font-bold text-base bg-gray-50 focus:bg-white"
                     placeholder="e.g. production-api"
                     value={newNamespace}
-                    onChange={(e) => setNewNamespace(e.target.value)}
+                    onChange={(e) => {
+                      const filtered = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                      setNewNamespace(filtered);
+                    }}
                     required
                   />
                 </div>
                 <button
                   type="submit"
-                  className="bg-teal-600 hover:bg-teal-700 text-white font-black py-4 px-10 rounded-xl shadow-xl transition-all transform active:scale-95 text-sm tracking-widest"
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest"
                   disabled={!newNamespace.trim() || isLoading}
                 >
                   CREATE

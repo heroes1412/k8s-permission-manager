@@ -33,6 +33,19 @@ export default function RoleManagement() {
     }));
   };
 
+  const toggleAll = (type: 'read' | 'write') => {
+    const allChecked = RESOURCE_TYPES_NAMESPACED.every(res => permissions[res][type]);
+    const nextValue = !allChecked;
+    
+    setPermissions(prev => {
+      const next = { ...prev };
+      RESOURCE_TYPES_NAMESPACED.forEach(res => {
+        next[res] = { ...next[res], [type]: nextValue };
+      });
+      return next;
+    });
+  };
+
   const resetForm = () => {
     setNewRoleName('');
     setIsEditing(false);
@@ -42,6 +55,11 @@ export default function RoleManagement() {
       ...acc,
       [resource]: { read: false, write: false }
     }), {}));
+  };
+
+  const handleRoleNameChange = (val: string) => {
+    const filtered = val.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    setNewRoleName(filtered);
   };
 
   const mapRulesToPermissions = (rules: Rule[]) => {
@@ -162,7 +180,7 @@ export default function RoleManagement() {
             {!showForm && (
               <button 
                 onClick={() => setShowForm(true)}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-tight"
+                className="bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-widest uppercase"
               >
                 <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-60H6"></path></svg>
                 CREATE TEMPLATE
@@ -171,38 +189,54 @@ export default function RoleManagement() {
           </div>
           
           {!showForm ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {templates.length === 0 ? (
-                <div className="col-span-full py-16 text-center text-gray-400 bg-gray-50 rounded-xl border-4 border-dashed">
-                  <p className="text-lg font-black tracking-tight uppercase">No custom templates</p>
-                </div>
-              ) : (
-                templates.map(cr => {
-                  const name = cr.metadata.name.replace(templateNamespacedResourceRolePrefix, '');
-                  return (
-                    <div key={cr.metadata.name} className="flex items-center justify-between p-5 bg-gray-50 border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition-all group">
-                      <div>
-                        <span className="text-gray-900 font-black text-base block tracking-tight">{name}</span>
-                        <span className="text-[11px] text-gray-400 font-mono italic">ID: {cr.metadata.name}</span>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button 
-                          onClick={() => handleEditInitiate(cr)}
-                          className="px-3 py-2 bg-white text-teal-600 hover:bg-teal-600 hover:text-white rounded-lg border border-teal-100 shadow-sm transition-all text-xs font-black uppercase tracking-widest"
-                        >
-                          EDIT
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(cr.metadata.name)}
-                          className="px-3 py-2 bg-white text-red-600 hover:bg-red-600 hover:text-white rounded-lg border border-red-100 shadow-sm transition-all text-xs font-black uppercase tracking-widest"
-                        >
-                          DEL
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+            <div className="my-6">
+              <table className="text-left w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/80 border-b border-gray-100">
+                    <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">
+                      Role Name
+                    </th>
+                    <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  {templates.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="py-12 text-center text-gray-400 italic font-medium text-base">
+                        No custom templates found.
+                      </td>
+                    </tr>
+                  ) : (
+                    templates.map(cr => {
+                      const name = cr.metadata.name.replace(templateNamespacedResourceRolePrefix, '');
+                      return (
+                        <tr key={cr.metadata.name} className="hover:bg-gray-50/50 border-b border-gray-100 last:border-0 transition-colors">
+                          <td className="py-3 px-6">
+                            <button 
+                                onClick={() => handleEditInitiate(cr)}
+                                className="underline text-teal-700 hover:text-teal-900 font-black tracking-tight text-base text-left block"
+                            >
+                                {name}
+                            </button>
+                            <div className="text-[11px] text-gray-400 font-mono italic">Internal ID: {cr.metadata.name}</div>
+                          </td>
+                          <td className="py-4 px-6 text-right">
+                            <button 
+                              onClick={() => handleDelete(cr.metadata.name)}
+                              className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"
+                              title="Delete Template"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           ) : (
             <form onSubmit={handleCreateOrUpdate} className="bg-gray-50 p-8 rounded-2xl border-2 border-teal-100 shadow-inner">
@@ -229,16 +263,34 @@ export default function RoleManagement() {
                   placeholder="e.g. cluster-viewer"
                   className={`shadow-sm appearance-none border-2 rounded-xl w-full py-3.5 px-6 text-gray-800 leading-tight focus:outline-none focus:ring-4 transition-all font-bold text-base ${isEditing ? 'bg-gray-100 cursor-not-allowed border-gray-300' : 'focus:ring-teal-100 border-gray-200 focus:border-teal-500'}`}
                   value={newRoleName}
-                  onChange={e => setNewRoleName(e.target.value)}
+                  onChange={e => handleRoleNameChange(e.target.value)}
                   required
                   disabled={isEditing}
                 />
               </div>
 
               <div className="mb-8">
-                <label className="block text-gray-700 text-xs font-black mb-4 uppercase tracking-widest ml-1">
-                  Permissions Matrix
-                </label>
+                <div className="flex justify-between items-center mb-4 ml-1">
+                  <label className="block text-gray-700 text-xs font-black uppercase tracking-widest">
+                    Permissions Matrix
+                  </label>
+                  <div className="flex space-x-2">
+                    <button 
+                      type="button" 
+                      onClick={() => toggleAll('read')}
+                      className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg hover:bg-cyan-200 transition-colors"
+                    >
+                      Toggle Read
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => toggleAll('write')}
+                      className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-rose-100 text-rose-700 rounded-lg hover:bg-rose-200 transition-colors"
+                    >
+                      Toggle Write
+                    </button>
+                  </div>
+                </div>
                 <div className="border-2 border-gray-100 rounded-2xl bg-white overflow-hidden shadow-lg max-h-[500px] overflow-y-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-gray-50 z-20 shadow-md border-b-2 border-gray-100">
@@ -263,7 +315,7 @@ export default function RoleManagement() {
                           <td className="py-3 px-8 text-center border-l-2 border-gray-100 bg-rose-50/5">
                             <input 
                               type="checkbox" 
-                              className="w-6 h-6 rounded-lg border-gray-300 text-red-600 focus:ring-red-500 accent-red-600 transition-transform active:scale-90"
+                              className="w-6 h-6 rounded-lg border-gray-300 text-teal-600 focus:ring-teal-500 accent-teal-600 transition-transform active:scale-90"
                               checked={permissions[resource].write}
                               onChange={() => handlePermissionChange(resource, 'write')}
                             />
@@ -278,7 +330,7 @@ export default function RoleManagement() {
               <div className="flex justify-end pt-4 space-x-4">
                 <button 
                   type="submit"
-                  className={`text-white font-black py-4 px-12 rounded-2xl shadow-xl transform active:scale-95 transition-all flex items-center text-sm tracking-widest ${isEditing ? 'bg-orange-600 hover:bg-orange-700 shadow-orange-200' : 'bg-teal-600 hover:bg-teal-700 shadow-teal-200'}`}
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center text-sm tracking-widest"
                   disabled={!newRoleName.trim() || isLoading}
                 >
                   {isEditing ? 'UPDATE TEMPLATE' : 'CREATE ROLE TEMPLATE'}

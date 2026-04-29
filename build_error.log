@@ -1,0 +1,79 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.21kB done
+#1 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 2)
+#1 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 10)
+#1 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 42)
+#1 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 47)
+#1 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 51)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 0.2s
+
+#3 [internal] load metadata for docker.io/library/golang:1.23-alpine
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 62B done
+#4 DONE 0.0s
+
+#5 [release 1/2] WORKDIR /app
+#5 CACHED
+
+#6 [ui-builder 1/5] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#6 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#6 DONE 0.0s
+
+#7 [go-base 1/9] FROM docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f
+#7 resolve docker.io/library/golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f 0.0s done
+#7 DONE 0.0s
+
+#8 [ui-builder 2/5] RUN mkdir /app
+#8 CACHED
+
+#9 [internal] load build context
+#9 transferring context: 1.18MB 0.8s done
+#9 DONE 0.8s
+
+#10 [go-base 2/9] RUN mkdir -p /tmp/.go/cache /tmp/.go/modcache /tmp/.go/tmp /app
+#10 CACHED
+
+#11 [go-base 3/9] WORKDIR /app
+#11 CACHED
+
+#12 [go-base 4/9] COPY go.mod go.mod
+#12 CACHED
+
+#13 [go-base 5/9] COPY go.sum go.sum
+#13 CACHED
+
+#14 [go-base 6/9] RUN go mod download
+#14 0.437 go: github.com/beorn7/perks@v1.0.1: Get "https://proxy.golang.org/github.com/beorn7/perks/@v/v1.0.1.mod": dial tcp 64.233.188.141:443: connect: connection refused
+#14 ERROR: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
+
+#15 [ui-builder 3/5] COPY web-client /app
+#15 CANCELED
+------
+ > [go-base 6/9] RUN go mod download:
+0.437 go: github.com/beorn7/perks@v1.0.1: Get "https://proxy.golang.org/github.com/beorn7/perks/@v/v1.0.1.mod": dial tcp 64.233.188.141:443: connect: connection refused
+------
+
+ [33m7 warnings found (use docker --debug to expand):
+[0m - FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 10)
+ - FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 42)
+ - FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 47)
+ - FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 51)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "BASIC_AUTH_PASSWORD") (line 21)
+ - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ENV "BASIC_AUTH_PASSWORD") (line 27)
+ - FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 2)
+Dockerfile:36
+--------------------
+  34 |     COPY go.sum go.sum
+  35 |     
+  36 | >>> RUN go mod download
+  37 |     
+  38 |     COPY cmd cmd
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
