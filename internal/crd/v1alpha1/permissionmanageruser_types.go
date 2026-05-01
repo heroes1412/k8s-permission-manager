@@ -8,8 +8,11 @@ const (
 )
 
 type PermissionManagerUserSpec struct {
-	Name         string `json:"name"`
-	FriendlyName string `json:"friendlyname,omitempty"`
+	Name         string                          `json:"name"`
+	FriendlyName string                          `json:"friendlyname,omitempty"`
+	MaxDays      int                             `json:"maxdays,omitempty"`
+	Groups       []string                        `json:"groups"`
+	Resources    []PermissionManagerUserResource `json:"resources"`
 }
 
 // PermissionManagerUser is the PermissionManager representation of an user of the managed K8s cluster

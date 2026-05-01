@@ -63,7 +63,7 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config) {
 		return func(c echo.Context) error {
 			customContext := &AppContext{
 				Context:         c,
-				ResourceManager: resources.NewManager(resources.NewKubeClient(), c.Request().Context()),
+				ResourceManager: resources.NewManager(resources.NewKubeClient(), c.Request().Context(), cfg.Cluster.Namespace),
 				Config:          cfg,
 			}
 			return next(customContext)
@@ -76,12 +76,16 @@ func addRoutes(e *echo.Echo) {
 	api := e.Group("/api")
 
 	api.GET("/list-users", listUsers)
+	api.GET("/list-groups", listGroups)
 	api.GET("/list-namespace", ListNamespaces)
 	api.GET("/rbac", listRbac)
 
 	api.POST("/create-cluster-role", createClusterRole)
 	api.POST("/update-cluster-role", updateClusterRole)
 	api.POST("/create-user", createUser)
+	api.POST("/update-user", updateUser)
+	api.POST("/create-group", createGroup)
+	api.POST("/update-group", updateGroup)
 	api.POST("/create-rolebinding", createRoleBinding)
 	api.POST("/create-cluster-rolebinding", createClusterRolebinding)
 
@@ -91,6 +95,7 @@ func addRoutes(e *echo.Echo) {
 	api.POST("/delete-rolebinding", deleteRolebinding)
 	api.POST("/delete-role", deleteRole)
 	api.POST("/delete-user", deleteUser)
+	api.POST("/delete-group", deleteGroup)
 
 	api.POST("/create-kubeconfig", createKubeconfig)
 	api.POST("/check-legacy-user", checkLegacyUser)

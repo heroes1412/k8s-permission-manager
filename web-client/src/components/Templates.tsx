@@ -1,10 +1,12 @@
 import React from 'react'
 import TemplatePairSelect from './TemplatePairSelect'
 import { AggregatedRoleBinding } from "../services/role";
-import { AggregatedRoleBindingManager } from "./new-user-wizard";
 
-interface TemplatesParameters extends AggregatedRoleBindingManager {
+interface TemplatesParameters {
   readonly pairItems: AggregatedRoleBinding[]
+  savePair: (p: AggregatedRoleBinding) => void
+  setPairItems: (p: AggregatedRoleBinding[] | ((prev: AggregatedRoleBinding[]) => AggregatedRoleBinding[])) => void
+  addEmptyPair: () => void
 }
 
 export default function Templates({ pairItems, savePair, setPairItems, addEmptyPair }: TemplatesParameters) {
@@ -14,53 +16,52 @@ export default function Templates({ pairItems, savePair, setPairItems, addEmptyP
 
   return (
     <div>
-      <div className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2">
-        templates
+      <div className="flex justify-between items-center mb-4">
+        <label className="block text-[17px] font-text font-semibold text-apple-nearBlack tracking-[-0.374px]">Namespace Permissions</label>
+        <button
+          type="button"
+          onClick={() => addEmptyPair()}
+          disabled={addButtonDisabled}
+          className={`bg-apple-buttonLight border-[3px] border-[rgba(0,0,0,0.04)] text-apple-nearBlack font-text py-[6px] px-[12px] rounded-[11px] text-[14px] transition-all flex items-center ${addButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-[rgba(0,0,0,0.1)]'}`}
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+          Add Permission
+        </button>
       </div>
-      <div className="bg-gray-100  border rounded py-3 px-4 mb-3">
+
+      <div className="space-y-6">
         {pairItems.map((p, index) => {
           return (
-            <div key={p.id}>
-              <div className="mb-2">
-                <span className="uppercase tracking-wide text-gray-700 text-xs font-bold mb-2">
-                  #{index + 1}
+            <div key={p.id} className="relative bg-[rgba(0,0,0,0.02)] p-4 rounded-[11px] border border-[rgba(0,0,0,0.05)]">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[12px] font-text font-semibold text-apple-textTertiaryLight uppercase tracking-widest">
+                  Permission Rule #{index + 1}
                 </span>
                 <button
                   tabIndex={-1}
                   type="button"
-                  className="bg-transparent hover:bg-red-600 text-gray-700 hover:text-gray-100 py-1 px-2 rounded hover:shadow ml-2 text-xs"
-                  onClick={() =>
-                    setPairItems(pairItems.filter(x => x.id !== p.id))
-                  }
+                  className="text-apple-textTertiaryLight hover:text-[#ff3b30] p-1 transition-colors"
+                  onClick={() => setPairItems((state: AggregatedRoleBinding[]) => state.filter(x => x.id !== p.id))}
+                  title="Remove Rule"
                 >
-                  delete
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
               </div>
 
-              <div className="flex items-center">
-                <div className="flex-auto">
-                  <TemplatePairSelect
-                    index={index + 1}
-                    onSave={savePair}
-                    initialValues={p}
-                  />
-                </div>
-              </div>
-
-              <hr className="my-4" />
+              <TemplatePairSelect
+                index={index + 1}
+                onSave={savePair}
+                initialValues={p}
+              />
             </div>
           )
         })}
 
-        <button
-          className={`bg-white hover:bg-teal-500 hover:text-white text-gray-800 py-2 px-6 rounded shadow ${addButtonDisabled ? ' opacity-50 cursor-not-allowed' : ''
-            }`}
-          type="button"
-          disabled={addButtonDisabled}
-          onClick={addEmptyPair}
-        >
-          add
-        </button>
+        {pairItems.length === 0 && (
+          <div className="text-center py-10 bg-[rgba(0,0,0,0.02)] rounded-[11px] border-2 border-dashed border-[rgba(0,0,0,0.1)]">
+             <p className="text-[14px] font-text text-[rgba(0,0,0,0.48)]">No specific namespace permissions assigned.</p>
+          </div>
+        )}
       </div>
     </div>
   )

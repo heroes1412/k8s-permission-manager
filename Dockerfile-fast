@@ -1,0 +1,32 @@
+## BACKEND ##
+FROM golang:1.23-alpine as go-base
+
+ENV GOCACHE=/tmp/.go/cache
+ENV GOMODCACHE=/tmp/.go/modcache
+ENV GOTMPDIR=/tmp/.go/tmp
+ENV CGO_ENABLED=0
+
+RUN mkdir -p /tmp/.go/cache /tmp/.go/modcache /tmp/.go/tmp /app
+WORKDIR /app
+
+# Copy Go dependency files
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY vendor vendor
+
+# Copy source code
+COPY cmd cmd
+COPY internal internal
+COPY static static
+
+# Copy PRE-BUILT UI assets from host
+COPY web-client/build /app/static/build
+
+FROM go-base as builder
+RUN go build -mod=vendor --tags=release -o permission-manager cmd/run-server.go
+
+FROM scratch as release
+WORKDIR /app
+COPY --from=builder /app/permission-manager /app/permission-manager
+EXPOSE 4000
+ENTRYPOINT ["./permission-manager"]

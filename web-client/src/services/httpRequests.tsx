@@ -70,6 +70,30 @@ class HttpRequests {
     })
   }
 
+  public groupList() {
+    return this.httpClient.get('/api/list-groups');
+  }
+
+  public groupCreate(name: string, resources: any[] = []) {
+    return this.httpClient.post('/api/create-group', {
+      name: name,
+      resources: resources
+    })
+  }
+
+  public groupUpdate(name: string, resources: any[]) {
+    return this.httpClient.post('/api/update-group', {
+      name: name,
+      resources: resources
+    })
+  }
+
+  public groupDelete(name: string) {
+    return this.httpClient.post('/api/delete-group', {
+      name: name
+    })
+  }
+
   public clusterRoleCreate(roleName: string, rules: any[]) {
     return this.httpClient.post('/api/create-cluster-role', {
       roleName: roleName,

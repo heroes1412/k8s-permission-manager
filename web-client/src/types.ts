@@ -5,4 +5,7 @@ export interface User {
   readonly id?: string
   readonly name: string
   readonly friendlyName?: string
+  readonly maxDays?: number
+  readonly groups?: string[]
+  readonly createdAt?: string
 }

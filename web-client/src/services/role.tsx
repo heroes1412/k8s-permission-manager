@@ -42,28 +42,29 @@ export interface ExtractedUserRoles {
 }
 
 /**
- * extractUsersRoles encapsulates the common logic needed to extract the roles of a given user
+ * extractUsersRoles encapsulates the common logic needed to extract the roles of a given user or group
  * @param roleBindings
  * @param clusterRoleBindings
- * @param username
+ * @param name
+ * @param type
  */
-export function extractUsersRoles(roleBindings: RoleBinding[], clusterRoleBindings: ClusterRoleBinding[], username: string): ExtractedUserRoles {
+export function extractUsersRoles(roleBindings: RoleBinding[], clusterRoleBindings: ClusterRoleBinding[], name: string, type: 'user' | 'group' = 'user'): ExtractedUserRoles {
   const rbs = (roleBindings || []).filter(rb => {
+    if (type === 'group') {
+      return rb.metadata.labels?.['generated_for_group'] === name
+    }
     const separatedResourceName = rb.metadata.name.split(resourceSeparator);
-
     if (separatedResourceName.length === 0) return false
-
-    // the first split always contains the name of the user
-    return separatedResourceName[0] === username
+    return separatedResourceName[0] === name
   })
 
   const crbs = (clusterRoleBindings || []).filter(crb => {
+    if (type === 'group') {
+      return crb.metadata.labels?.['generated_for_group'] === name
+    }
     const separatedResourceName = crb.metadata.name.split(resourceSeparator);
-
     if (separatedResourceName.length === 0) return false
-
-    // the first split always contains the name of the user
-    return separatedResourceName[0] === username
+    return separatedResourceName[0] === name
   })
 
   const normalizedRoleBindings: NormalizedRoleBinding[] = [...rbs, ...crbs]

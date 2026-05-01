@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -124,6 +126,7 @@ func createKubeconfig(c echo.Context) error {
 	type Response struct {
 		Ok         bool   `json:"ok"`
 		Kubeconfig string `json:"kubeconfig"`
+		Error      string `json:"error,omitempty"`
 	}
 
 	ac := c.(*AppContext)
@@ -134,6 +137,20 @@ func createKubeconfig(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Check for user expiration
+	user, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.Get(r.Username)
+	if err == nil && user.Spec.MaxDays > 0 {
+		creationTime := user.Metadata.CreationTimestamp.Time
+		expirationTime := creationTime.AddDate(0, 0, user.Spec.MaxDays)
+		if time.Now().After(expirationTime) {
+			return c.JSON(http.StatusForbidden, Response{
+				Ok:    false,
+				Error: fmt.Sprintf("User %s has expired on %s", r.Username, expirationTime.Format("2006-01-02")),
+			})
+		}
+	}
+
 	// if no namespace is set we set the value "default"
 	if r.Namespace == "" {
 		r.Namespace = "default"

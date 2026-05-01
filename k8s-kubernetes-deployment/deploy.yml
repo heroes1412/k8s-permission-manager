@@ -34,7 +34,7 @@ spec:
       serviceAccountName: permission-manager
       containers:
         - name: permission-manager
-          image: h2372/permission-manager:v3
+          image: h2372/permission-manager:v4
           ports:
             - containerPort: 4000
           env:

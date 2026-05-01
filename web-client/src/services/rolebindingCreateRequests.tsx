@@ -15,6 +15,10 @@ interface RoleCreate {
    * this field adds generated_for_user to the http request
    */
   readonly username?: string,
+  /**
+   * this field adds generated_for_group to the http request
+   */
+  readonly groupname?: string,
   readonly subjects: Subject[]
 
 }
@@ -71,6 +75,10 @@ export class RolebindingCreateRequests {
       request['generated_for_user'] = params.username
     }
 
+    if (params.groupname) {
+      request['generated_for_group'] = params.groupname
+    }
+
     return await this.httpClient.post('/api/create-cluster-rolebinding', request)
   }
 
@@ -106,6 +114,10 @@ export class RolebindingCreateRequests {
 
     if (params.username) {
       request['generated_for_user'] = params.username
+    }
+
+    if (params.groupname) {
+      request['generated_for_group'] = params.groupname
     }
 
     await this.httpClient.post('/api/create-rolebinding', request)
@@ -211,5 +223,58 @@ export class RolebindingCreateRequests {
       subjects: subjects
     });
 
+  }
+
+  public async fromAggregatedRolebindingsForGroup(aggregatedRoleBindings: AggregatedRoleBinding[], groupname: string, clusterAccess: ClusterAccess) {
+    const consumed: string[] = []
+    const subjects: Subject[] = []
+
+    const getShortTemplateName = (fullName: string) => {
+      return fullName
+        .replace(templateNamespacedResourceRolePrefix, '')
+        .replace(templateClusterResourceRolePrefix, '');
+    }
+
+    for (const allNamespaceRolebinding of aggregatedRoleBindings.filter(e => e.namespaces === 'ALL_NAMESPACES')) {
+      const clusterRolebindingName = 'group' + resourceSeparator + groupname + resourceSeparator + getShortTemplateName(allNamespaceRolebinding.template) + '-all'
+      if (consumed.includes(clusterRolebindingName)) continue;
+      await this.rolebindingAllNamespaces({
+        clusterRolebindingName: clusterRolebindingName,
+        template: allNamespaceRolebinding.template,
+        groupname: groupname,
+        subjects: subjects
+      })
+      consumed.push(clusterRolebindingName)
+    }
+
+    for (const namespacedRoleBinding of aggregatedRoleBindings.filter(e => e.namespaces !== 'ALL_NAMESPACES')) {
+      for (const namespace of namespacedRoleBinding.namespaces) {
+        const rolebindingName = 'group' + resourceSeparator + groupname + resourceSeparator + getShortTemplateName(namespacedRoleBinding.template)
+        if (consumed.includes(rolebindingName + resourceSeparator + namespace)) continue;
+        await this.rolebinding({
+          template: namespacedRoleBinding.template,
+          groupname: groupname,
+          namespace: namespace,
+          roleBindingName: rolebindingName,
+          subjects: subjects,
+          roleKind: 'ClusterRole'
+        });
+        consumed.push(rolebindingName + resourceSeparator + namespace)
+      }
+    }
+
+    if (clusterAccess === 'none') {
+      return;
+    }
+
+    const roleName = this.getRoleName(clusterAccess);
+    const clusterRolebindingName = 'group' + resourceSeparator + groupname + resourceSeparator + roleName
+
+    await this.clusterRolebinding({
+      template: roleName,
+      clusterRolebindingName: clusterRolebindingName,
+      groupname: groupname,
+      subjects: subjects
+    });
   }
 }

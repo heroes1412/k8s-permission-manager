@@ -25,7 +25,7 @@ export default function Home() {
 
   return (
     <div className=" bg-gray-200  pt-16 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         {(loading || isDeleting) && <FullScreenLoader />}
         <div className=" bg-white shadow-xl rounded-xl p-8 mb-4">
           <div className="flex justify-between items-center mb-6">
@@ -67,25 +67,51 @@ export default function Home() {
                     </td>
                   </tr>
                 ) : (
-                  users.map((u) => (
-                    <tr key={u.name} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0">
-                      <td className="py-3 px-6 text-gray-800">
-                        <Link to={`/users/${u.name}`} className="underline text-teal-700 hover:text-teal-900 font-black tracking-tight text-base">
-                          {u.friendlyName || u.name}
-                        </Link>
-                        {u.friendlyName && <div className="text-[11px] text-gray-400 font-mono italic">Internal ID: {u.name}</div>}
-                      </td>
-                      <td className="py-4 px-6 text-right">
-                        <button
-                          onClick={() => handleDelete(u.name)}
-                          className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"
-                          title="Delete User"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  users.map((u) => {
+                    const isExpired = u.maxDays && u.maxDays > 0 && u.createdAt && 
+                      new Date().getTime() > new Date(u.createdAt).getTime() + u.maxDays * 24 * 60 * 60 * 1000;
+                    
+                    const daysLeft = u.maxDays && u.maxDays > 0 && u.createdAt ? 
+                      Math.ceil((new Date(u.createdAt).getTime() + u.maxDays * 24 * 60 * 60 * 1000 - new Date().getTime()) / (24 * 60 * 60 * 1000)) : null;
+
+                    return (
+                      <tr key={u.name} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0">
+                        <td className="py-3 px-6 text-gray-800">
+                          <div className="flex items-center">
+                            <Link to={`/users/${u.name}`} className="underline text-teal-700 hover:text-teal-900 font-black tracking-tight text-base">
+                              {u.friendlyName || u.name}
+                            </Link>
+                            {isExpired ? (
+                              <span className="ml-3 px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-black uppercase rounded-md tracking-tighter border border-red-200">Expired</span>
+                            ) : daysLeft !== null && daysLeft <= 7 ? (
+                              <span className="ml-3 px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase rounded-md tracking-tighter border border-orange-200">
+                                {daysLeft <= 0 ? 'Expiring soon' : `${daysLeft}d left`}
+                              </span>
+                            ) : null}
+                          </div>
+                          {u.friendlyName && <div className="text-[11px] text-gray-400 font-mono italic">Internal ID: {u.name}</div>}
+                          {u.groups && u.groups.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {u.groups.map(g => (
+                                <span key={g} className="px-1.5 py-0.5 bg-teal-50 text-teal-600 text-[9px] font-bold uppercase rounded border border-teal-100">
+                                  {g}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => handleDelete(u.name)}
+                            className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"
+                            title="Delete User"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

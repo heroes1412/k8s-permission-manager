@@ -14,18 +14,10 @@ export default function UserPage() {
 
   const user = users.find(u => u.name === username)
 
-  return (
-    <div className=" bg-gray-200  pt-16 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 pb-12">
-        <div className=" bg-white shadow-xl rounded-2xl p-8 mb-4">
-          {user ? <EditUser user={user} /> : (
-            <div className="py-20 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto mb-4"></div>
-                <p className="text-gray-400 font-medium italic">Loading user data from cluster...</p>
-            </div>
-          )}
-        </div>
-      </div>
+  return user ? <EditUser user={user} /> : (
+    <div className="bg-apple-lightGray min-h-screen py-16 flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-[3px] border-transparent border-t-apple-blue mx-auto mb-4"></div>
+        <p className="text-[17px] font-text text-apple-textTertiaryLight font-medium">Loading user data from cluster...</p>
     </div>
   )
 }

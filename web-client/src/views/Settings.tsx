@@ -63,7 +63,7 @@ export default function Settings() {
 
   return (
     <div className="bg-gray-200 pt-16 min-h-screen">
-      <div className="max-w-3xl mx-auto px-4 pb-12">
+      <div className="max-w-6xl mx-auto px-4 pb-12">
         {(isLoading || isSaving || isRestarting) && <FullScreenLoader />}
         <div className="bg-white shadow-xl rounded-xl p-8 mb-4">
           <div className="flex justify-between items-center mb-6 border-b pb-6">
