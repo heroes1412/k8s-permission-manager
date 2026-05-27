@@ -4,8 +4,10 @@ import { FullScreenLoader } from './Loader'
 import { useUsers } from '../hooks/useUsers'
 import { httpRequests } from "../services/httpRequests"
 import GroupMultiSelect from "./GroupMultiSelect"
+import { useSettings } from '../hooks/useSettings'
 
 export default function NewUserWizard() {
+  const { settings } = useSettings()
   const history = useHistory()
 
   const [username, setUsername] = useState<string>('')
@@ -23,8 +25,8 @@ export default function NewUserWizard() {
     }
 
     if (
-      !username.match(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?([@\.-][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/)) {
-      setUsernameError(`username must be lowercase alphanumeric, and can contain "-", ".", or "@" for emails, and must start and end with an alphanumeric character`)
+      !username.match(/^[a-z]([-a-z0-9]*[a-z0-9])?([@\.-][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$/)) {
+      setUsernameError(`username must be lowercase alphanumeric, and can contain "-", ".", or "@" for emails, and must start with a letter and end with an alphanumeric character`)
       return false
     }
 
@@ -123,27 +125,30 @@ export default function NewUserWizard() {
                 value={maxDays}
                 onChange={e => setMaxDays(parseInt(e.target.value) || 0)}
               />
+              <p className="mt-1 text-[12px] text-apple-textTertiaryLight font-medium italic">User will expire in {maxDays} days from now.</p>
             </div>
 
-            <div>
-              <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">Assigned Groups</label>
-              <GroupMultiSelect
-                value={groups}
-                onSelect={setGroups}
-                placeholder="Select or create groups..."
-              />
-            </div>
+            {settings.GROUPS_ENABLED === 'true' && (
+              <div>
+                <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">Assigned Groups</label>
+                <GroupMultiSelect
+                  value={groups}
+                  onSelect={setGroups}
+                  placeholder="Select or create groups..."
+                />
+              </div>
+            )}
 
-            <div className="pt-6 flex justify-end space-x-4">
+            <div className="pt-6 flex flex-col sm:flex-row justify-end gap-4">
               <button
                 type="button"
                 onClick={() => history.push('/')}
-                className="bg-transparent text-apple-darkBlue border border-apple-darkBlue rounded-pill px-[15px] py-[8px] text-[17px] font-text hover:underline transition-all"
+                className="w-full sm:w-auto bg-transparent text-apple-darkBlue border border-apple-darkBlue rounded-pill px-[15px] py-[8px] text-[17px] font-text hover:underline transition-all flex items-center justify-center"
               >
                 Discard
               </button>
               <button
-                className={`bg-apple-blue text-white rounded-[8px] px-[15px] py-[8px] text-[17px] font-text transition-all ${saveButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-apple-brightBlue'
+                className={`w-full sm:w-auto bg-apple-blue text-white rounded-[8px] px-[15px] py-[8px] text-[17px] font-text transition-all flex items-center justify-center ${saveButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-apple-brightBlue'
                   }`}
                 disabled={saveButtonDisabled}
                 type="submit"

@@ -1,12 +1,10 @@
 package resources
 
 import (
-	"strings"
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
 
 type RoleBindingRequirements struct {
 	RoleKind        string
@@ -14,7 +12,6 @@ type RoleBindingRequirements struct {
 	RolebindingName string
 	Subjects        []rbacv1.Subject
 }
-
 
 func (r *Manager) RoleBindingCreate(namespace, username string, rbReq RoleBindingRequirements) (*rbacv1.RoleBinding, error) {
 	username = SanitizeUsername(username)
@@ -44,7 +41,6 @@ func (r *Manager) RoleBindingCreate(namespace, username string, rbReq RoleBindin
 	}
 
 	return rb, nil
-
 }
 
 func (r *Manager) RoleBindingCreateForGroup(namespace, groupname string, rbReq RoleBindingRequirements) (*rbacv1.RoleBinding, error) {
@@ -83,53 +79,65 @@ func (r *Manager) RoleBindingListByUser(namespace, username string) (*rbacv1.Rol
 	})
 }
 
+// RoleBindingDeleteAllForUser deletes all role bindings for the given user across all namespaces.
+// It fetches the namespace list itself; prefer roleBindingDeleteAllForUserInNamespaces when
+// the namespace list has already been retrieved (e.g. during a sync operation).
 func (r *Manager) RoleBindingDeleteAllForUser(username string) error {
+	namespaces, err := r.NamespaceList()
+	if err != nil {
+		return err
+	}
+	return r.roleBindingDeleteAllForUserInNamespaces(username, namespaces)
+}
+
+// roleBindingDeleteAllForUserInNamespaces is the internal implementation that accepts a
+// pre-fetched namespace list to avoid redundant NamespaceList() API calls during sync.
+// Fix #4: Uses LabelSelector instead of listing ALL bindings per namespace and filtering in-memory.
+func (r *Manager) roleBindingDeleteAllForUserInNamespaces(username string, namespaces []string) error {
 	username = SanitizeUsername(username)
-	namespaces, err := r.NamespaceList()
-	if err != nil {
-		return err
-	}
-
-	prefix1 := username + "___"
-	prefix2 := username + "-"
-
 	for _, ns := range namespaces {
-		rbs, err := r.RoleBindingList(ns)
+		rbs, err := r.kubeclient.RbacV1().RoleBindings(ns).List(r.context, metav1.ListOptions{
+			LabelSelector: "generated_for_user=" + username,
+		})
 		if err != nil {
 			continue
 		}
 		for _, rb := range rbs.Items {
-			if strings.HasPrefix(rb.Name, prefix1) || strings.HasPrefix(rb.Name, prefix2) || rb.Labels["generated_for_user"] == username {
-				_ = r.RoleBindingDelete(ns, rb.Name)
-			}
+			_ = r.RoleBindingDelete(ns, rb.Name)
 		}
 	}
 	return nil
 }
 
+// RoleBindingDeleteAllForGroup deletes all role bindings for the given group across all namespaces.
+// It fetches the namespace list itself; prefer roleBindingDeleteAllForGroupInNamespaces when
+// the namespace list has already been retrieved (e.g. during a sync operation).
 func (r *Manager) RoleBindingDeleteAllForGroup(groupname string) error {
-	groupname = SanitizeUsername(groupname)
 	namespaces, err := r.NamespaceList()
 	if err != nil {
 		return err
 	}
+	return r.roleBindingDeleteAllForGroupInNamespaces(groupname, namespaces)
+}
 
-	prefix := "group___" + groupname + "___"
-
+// roleBindingDeleteAllForGroupInNamespaces is the internal implementation that accepts a
+// pre-fetched namespace list to avoid redundant NamespaceList() API calls during sync.
+// Fix #4: Uses LabelSelector instead of listing ALL bindings per namespace and filtering in-memory.
+func (r *Manager) roleBindingDeleteAllForGroupInNamespaces(groupname string, namespaces []string) error {
+	groupname = SanitizeUsername(groupname)
 	for _, ns := range namespaces {
-		rbs, err := r.RoleBindingList(ns)
+		rbs, err := r.kubeclient.RbacV1().RoleBindings(ns).List(r.context, metav1.ListOptions{
+			LabelSelector: "generated_for_group=" + groupname,
+		})
 		if err != nil {
 			continue
 		}
 		for _, rb := range rbs.Items {
-			if strings.HasPrefix(rb.Name, prefix) || rb.Labels["generated_for_group"] == groupname {
-				_ = r.RoleBindingDelete(ns, rb.Name)
-			}
+			_ = r.RoleBindingDelete(ns, rb.Name)
 		}
 	}
 	return nil
 }
-
 
 func (r *Manager) RoleBindingDelete(namespace, roleBindingName string) error {
 	return r.kubeclient.RbacV1().RoleBindings(namespace).Delete(r.context, roleBindingName, metav1.DeleteOptions{})

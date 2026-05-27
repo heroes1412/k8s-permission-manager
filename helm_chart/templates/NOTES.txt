@@ -1,9 +1,9 @@
 
-Thank you for installing SIGHUP Permission Manager.
-https://sighup.io
+Thank you for installing Permission Manager.
+https://github.com/heroes1412/k8s-permission-manager
 
 This is open source software <3 check out the source code at:
-https://github.com/sighupio/permission-manager
+https://github.com/heroes1412/k8s-permission-manager
 
 Feel free to send us feedback and report if you find any issue. Contributions are always apreciated.
 

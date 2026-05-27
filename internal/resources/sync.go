@@ -2,7 +2,10 @@ package resources
 
 import (
 	"fmt"
+	"log"
 	"strings"
+	"time"
+
 	"sighupio/permission-manager/internal/crd/v1alpha1"
 
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -15,6 +18,7 @@ func getShortTemplateName(fullName string) string {
 	return name
 }
 
+// SyncGroup reconciles all RBAC bindings for the given group and re-syncs every member user.
 func (r *Manager) SyncGroup(groupname string) error {
 	groupname = SanitizeUsername(groupname)
 	group, err := r.V1Alpha1PermissionManagerGroup.Get(groupname)
@@ -27,8 +31,27 @@ func (r *Manager) SyncGroup(groupname string) error {
 		return err
 	}
 
+	// Fix #5: Fetch namespaces ONCE for the entire group sync operation.
+	// This list is reused for deletion, recreation, and per-user syncs below,
+	// avoiding O(users) redundant NamespaceList() API calls.
+	namespaces, err := r.NamespaceList()
+	if err != nil {
+		return fmt.Errorf("failed to list namespaces for group sync: %w", err)
+	}
+
 	var subjects []rbacv1.Subject
 	for _, u := range users {
+		// Fix #9 (part 1): Only add user to group subjects if NOT expired
+		if u.MaxDays > 0 {
+			createdAt, err := time.Parse(time.RFC3339, u.CreatedAt)
+			if err == nil {
+				expirationTime := createdAt.AddDate(0, 0, u.MaxDays)
+				if time.Now().After(expirationTime) {
+					continue // Skip expired user in group bindings
+				}
+			}
+		}
+
 		subjects = append(subjects, rbacv1.Subject{
 			Kind:      "ServiceAccount",
 			Name:      SanitizeUsername(u.Name),
@@ -36,12 +59,17 @@ func (r *Manager) SyncGroup(groupname string) error {
 		})
 	}
 
-	// Clean up old manually created group rolebindings
-	if err := r.RoleBindingDeleteAllForGroup(groupname); err != nil {
+	// Clean up old group rolebindings using pre-fetched namespace list.
+	if err := r.roleBindingDeleteAllForGroupInNamespaces(groupname, namespaces); err != nil {
 		return fmt.Errorf("failed to delete old role bindings for group %s: %w", groupname, err)
 	}
 	if err := r.ClusterRoleBindingDeleteAllForGroup(groupname); err != nil {
 		return fmt.Errorf("failed to delete old cluster role bindings for group %s: %w", groupname, err)
+	}
+
+	// If no active subjects left in group, we just stop after cleanup
+	if len(subjects) == 0 {
+		return nil
 	}
 
 	for _, res := range group.Spec.Resources {
@@ -82,33 +110,60 @@ func (r *Manager) SyncGroup(groupname string) error {
 		}
 	}
 
+	// Re-sync each member user using the already-fetched namespace list to avoid
+	// per-user NamespaceList() calls.
 	for _, u := range users {
-		_ = r.SyncUser(u.Name)
+		_ = r.syncUserWithNamespaces(u.Name, namespaces)
 	}
 
 	return nil
 }
 
+// SyncUser reconciles all RBAC bindings for the given user.
+// It fetches the namespace list once and delegates to the internal implementation.
 func (r *Manager) SyncUser(username string) error {
+	// Fix #5: Fetch namespaces once here rather than letting each sub-call fetch independently.
+	namespaces, err := r.NamespaceList()
+	if err != nil {
+		return fmt.Errorf("failed to list namespaces for user sync: %w", err)
+	}
+	return r.syncUserWithNamespaces(username, namespaces)
+}
+
+// syncUserWithNamespaces is the internal implementation of SyncUser that accepts a pre-fetched
+// namespace list. This allows SyncGroup to call it for each member without triggering additional
+// NamespaceList() API calls per user.
+func (r *Manager) syncUserWithNamespaces(username string, namespaces []string) error {
 	username = SanitizeUsername(username)
 	user, err := r.V1Alpha1PermissionManagerUser.Get(username)
 	if err != nil {
 		return err
 	}
 
-	// 1. Collect direct permissions only (group permissions are now handled by SyncGroup)
+	// Fix #9 (part 2): Prevent syncing permissions for expired users.
+	if user.Spec.MaxDays > 0 {
+		createdAt := user.Metadata.CreationTimestamp.Time
+		expirationTime := createdAt.AddDate(0, 0, user.Spec.MaxDays)
+		if time.Now().After(expirationTime) {
+			log.Printf("SyncUser: User %s is expired. Cleaning up direct permissions and skipping sync.", username)
+			_ = r.roleBindingDeleteAllForUserInNamespaces(username, namespaces)
+			_ = r.ClusterRoleBindingDeleteAllForUser(username)
+			return nil
+		}
+	}
+
+	// Collect direct permissions only (group permissions are handled by SyncGroup).
 	allResources := []v1alpha1.PermissionManagerUserResource{}
 	allResources = append(allResources, user.Spec.Resources...)
 
-	// 2. Clean up old user bindings
-	if err := r.RoleBindingDeleteAllForUser(username); err != nil {
+	// Clean up old user bindings using the pre-fetched namespace list.
+	if err := r.roleBindingDeleteAllForUserInNamespaces(username, namespaces); err != nil {
 		return fmt.Errorf("failed to delete old role bindings for user %s: %w", username, err)
 	}
 	if err := r.ClusterRoleBindingDeleteAllForUser(username); err != nil {
 		return fmt.Errorf("failed to delete old cluster role bindings for user %s: %w", username, err)
 	}
 
-	// 3. Apply new aggregated bindings
 	subjects := []rbacv1.Subject{
 		{
 			Kind:      "ServiceAccount",
@@ -122,7 +177,6 @@ func (r *Manager) SyncUser(username string) error {
 		shortRoleName := getShortTemplateName(roleName)
 		isClusterRole := false
 
-		// Check if it is a cluster role
 		cr, err := r.kubeclient.RbacV1().ClusterRoles().Get(r.context, roleName, metav1.GetOptions{})
 		if err == nil && cr != nil {
 			isClusterRole = true
@@ -137,13 +191,11 @@ func (r *Manager) SyncUser(username string) error {
 		}
 
 		if isAllNamespaces {
-			// Cluster level or across all namespaces
 			if isClusterRole {
 				rbName := fmt.Sprintf("%s___%s-all", username, shortRoleName)
 				_, _ = r.ClusterRoleBindingCreate(rbName, username, roleName, subjects)
 			} else {
-				// Role in all namespaces
-				namespaces, _ := r.NamespaceList()
+				// Role in all namespaces — use pre-fetched namespace list (Fix #5).
 				for _, ns := range namespaces {
 					rbName := fmt.Sprintf("%s___%s", username, shortRoleName)
 					_, _ = r.RoleBindingCreate(ns, username, RoleBindingRequirements{
@@ -155,7 +207,6 @@ func (r *Manager) SyncUser(username string) error {
 				}
 			}
 		} else {
-			// Specific namespaces
 			for _, ns := range res.Namespaces {
 				rbName := fmt.Sprintf("%s___%s", username, shortRoleName)
 				roleKind := "Role"

@@ -61,14 +61,18 @@ export default function GroupMultiSelect({onSelect, value, placeholder}: GroupMu
   };
 
   const handleCreate = async (inputValue: string) => {
-    const newGroup = inputValue.toLowerCase().replace(/[^a-z0-9.-]/g, '');
-    if (newGroup.length < 1 || newGroup.length > 32) {
-      alert("Group name must be 1-32 characters long and start/end with an alphanumeric character.");
+    const newGroup = inputValue.toLowerCase().replace(/[^a-z0-9.-]/g, '').replace(/^[-.]+|[-.]+$/g, '');
+    if (newGroup.length < 2 || newGroup.length > 32) {
+      alert("Group name must be 2-32 characters long.");
       return;
     }
-    
-    setIsLoading(true);
-    try {
+
+    if (!newGroup.match(/^[a-z]([-a-z0-9]*[a-z0-9])?$/)) {
+      alert("Group name must be lowercase alphanumeric, can contain '-', and must start with a letter and end with an alphanumeric character.");
+      return;
+    }
+
+    setIsLoading(true);    try {
       await httpRequests.groupCreate(newGroup, []);
       await fetchGroups();
       onSelect([...value, newGroup]);

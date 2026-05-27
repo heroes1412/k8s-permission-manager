@@ -4,10 +4,10 @@ name: permission-manager
 description:
   A Helm chart for Permission Manager, a simple to use, web application
   that enables a super-easy and user-friendly RBAC management for Kubernetes.
-home: https://sighup.io
+home: https://github.com/heroes1412/k8s-permission-manager
 sources:
-  - https://github.com/sighupio/permission-manager/
-icon: https://sighup.io/assets/sighup-logo-white.svg
+  - https://github.com/heroes1412/k8s-permission-manager
+icon: https://github.com/heroes1412/k8s-permission-manager/raw/main/docs/assets/logo.svg
 keywords:
   [
     "permission manager",

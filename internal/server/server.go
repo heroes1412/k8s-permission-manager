@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	k8sclient "k8s.io/client-go/kubernetes"
 
 	"sighupio/permission-manager/internal/config"
 	"sighupio/permission-manager/internal/resources"
@@ -20,22 +21,35 @@ func New(cfg config.Config) *echo.Echo {
 
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	addMiddlewareStack(e, cfg)
+	// Fix #1: Create a single shared Kubernetes client for the lifetime of the server.
+	// The previous code called resources.NewKubeClient() inside a per-request middleware,
+	// which allocates a new HTTP transport (with its own TLS dialer, connection pool, and
+	// internal goroutines) for every request and never closes it — a goroutine and file
+	// descriptor leak that compounds over time until OOM or "too many open files".
+	kubeClient := resources.NewKubeClient()
 
+	addMiddlewareStack(e, cfg, kubeClient)
 	addRoutes(e)
 
 	return e
 }
 
-func addMiddlewareStack(e *echo.Echo, cfg config.Config) {
+// addMiddlewareStack configures global middleware.
+// kubeClient is shared across all requests via the AppContext.
+func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.Interface) {
 	basicAuthPassword := os.Getenv("BASIC_AUTH_PASSWORD")
 
 	if basicAuthPassword == "" {
 		log.Fatal("BASIC_AUTH_PASSWORD env cannot be empty")
 	}
 
-	// enable cors in local development
-	e.Use(middleware.CORS())
+	// Fix #6: Only enable CORS in local development.
+	// In production the frontend is served from the same origin, so a permissive CORS
+	// header is unnecessary overhead and a minor security risk. Set CORS_ENABLED=true
+	// in your local .env / envrc to restore the previous behaviour during development.
+	if os.Getenv("CORS_ENABLED") == "true" {
+		e.Use(middleware.CORS())
+	}
 
 	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
 		if username == "admin" && password == basicAuthPassword {
@@ -59,17 +73,18 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config) {
 		HTML5:      true,
 	}))
 
+	// Fix #1 (continued): NewManager is a cheap struct wrapper — safe to create per-request.
+	// Only the underlying KubeClient (kubeClient) is shared and reused.
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			customContext := &AppContext{
 				Context:         c,
-				ResourceManager: resources.NewManager(resources.NewKubeClient(), c.Request().Context(), cfg.Cluster.Namespace),
+				ResourceManager: resources.NewManager(kubeClient, c.Request().Context(), cfg.Cluster.Namespace),
 				Config:          cfg,
 			}
 			return next(customContext)
 		}
 	})
-
 }
 
 func addRoutes(e *echo.Echo) {

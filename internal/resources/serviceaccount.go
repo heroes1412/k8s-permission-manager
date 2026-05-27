@@ -47,9 +47,16 @@ func (r *Manager) ServiceAccountCreateKubeConfigForUser(cluster config.ClusterCo
 
 	if serviceAccount == nil {
 		serviceAccount, err = r.ServiceAccountCreate(serviceAccountNamespace, username)
-		time.Sleep(2 * time.Second)
 		if err != nil {
 			log.Printf("Service Account not created: %v", err)
+		}
+		// Fix #2: Give Kubernetes time to process the new service account before attempting
+		// to create its token secret. Uses a context-aware select so the goroutine is freed
+		// immediately if the HTTP request is cancelled or times out.
+		select {
+		case <-r.context.Done():
+			return ""
+		case <-time.After(2 * time.Second):
 		}
 	}
 	/****  handle service account end ****/
@@ -84,18 +91,25 @@ func (r *Manager) ServiceAccountCreateKubeConfigForUser(cluster config.ClusterCo
 			log.Printf("Account Secret not created: %v", err)
 		}
 
-		// try 20 times with 0.5 second interval (to wait for k8s fill the data to the newly created Secret)
+		// Fix #2: Poll until Kubernetes populates the token into the secret.
+		// Max wait: 20 × 500ms = 10 seconds. Each sleep is context-aware so the
+		// goroutine is released immediately if the request is cancelled or times out.
 		for i := 1; i <= 20; i++ {
 			accountSecret, err = r.SecretGet(serviceAccountNamespace, username)
 			if err != nil {
-				log.Printf("Get Secret for account %v failed, : %v", username, err)
+				log.Printf("Get Secret for account %v failed: %v", username, err)
 				break
 			}
 
 			if accountSecret.Data["ca.crt"] != nil && len(accountSecret.Data["token"]) > 0 {
 				break
 			}
-			time.Sleep(500 * time.Millisecond)
+			// Context-aware sleep: exits early on client disconnect / timeout.
+			select {
+			case <-r.context.Done():
+				return ""
+			case <-time.After(500 * time.Millisecond):
+			}
 		}
 	}
 	/****  handle service account's end ****/

@@ -1,10 +1,9 @@
 package resources
 
 import (
-	"strings"
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (r *Manager) ClusterRoleBindingList() (*rbacv1.ClusterRoleBindingList, error) {
@@ -73,37 +72,36 @@ func (r *Manager) ClusterRoleBindingListByUser(username string) (*rbacv1.Cluster
 	})
 }
 
+// ClusterRoleBindingDeleteAllForUser deletes all cluster role bindings for the given user.
+// Fix #4: Uses LabelSelector so the API server returns only matching objects instead of
+// fetching the full cluster-wide list and filtering in memory.
 func (r *Manager) ClusterRoleBindingDeleteAllForUser(username string) error {
 	username = SanitizeUsername(username)
-	crbs, err := r.ClusterRoleBindingList()
+	crbs, err := r.kubeclient.RbacV1().ClusterRoleBindings().List(r.context, metav1.ListOptions{
+		LabelSelector: "generated_for_user=" + username,
+	})
 	if err != nil {
 		return err
 	}
-
-	prefix1 := username + "___"
-	prefix2 := username + "-"
-
 	for _, crb := range crbs.Items {
-		if strings.HasPrefix(crb.Name, prefix1) || strings.HasPrefix(crb.Name, prefix2) || crb.Labels["generated_for_user"] == username {
-			_ = r.ClusterRoleBindingDelete(crb.Name)
-		}
+		_ = r.ClusterRoleBindingDelete(crb.Name)
 	}
 	return nil
 }
 
+// ClusterRoleBindingDeleteAllForGroup deletes all cluster role bindings for the given group.
+// Fix #4: Uses LabelSelector so the API server returns only matching objects instead of
+// fetching the full cluster-wide list and filtering in memory.
 func (r *Manager) ClusterRoleBindingDeleteAllForGroup(groupname string) error {
 	groupname = SanitizeUsername(groupname)
-	crbs, err := r.ClusterRoleBindingList()
+	crbs, err := r.kubeclient.RbacV1().ClusterRoleBindings().List(r.context, metav1.ListOptions{
+		LabelSelector: "generated_for_group=" + groupname,
+	})
 	if err != nil {
 		return err
 	}
-
-	prefix := "group___" + groupname + "___"
-
 	for _, crb := range crbs.Items {
-		if strings.HasPrefix(crb.Name, prefix) || crb.Labels["generated_for_group"] == groupname {
-			_ = r.ClusterRoleBindingDelete(crb.Name)
-		}
+		_ = r.ClusterRoleBindingDelete(crb.Name)
 	}
 	return nil
 }

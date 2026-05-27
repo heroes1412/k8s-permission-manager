@@ -6,10 +6,11 @@ import { FullScreenLoader } from '../components/Loader'
 import Templates from '../components/Templates'
 import Summary from '../components/Summary'
 import ClusterAccessRadio from '../components/ClusterAccessRadio'
-import { AggregatedRoleBinding, extractUsersRoles } from "../services/role"
+import { AggregatedRoleBinding } from "../services/role"
 import { ClusterAccess } from "../components/types"
 import { httpRequests } from "../services/httpRequests"
 import { templateClusterResourceRolePrefix } from '../constants'
+import { useSettings } from '../hooks/useSettings'
 
 type SubjectType = 'user' | 'group'
 
@@ -21,7 +22,8 @@ interface OptionType {
 }
 
 export default function Permissions() {
-  const { clusterRoleBindings, roleBindings, refreshRbacData } = useRbac()
+  const { settings } = useSettings()
+  const { clusterRoleBindings, refreshRbacData } = useRbac()
   const { users, refreshUsers } = useUsers()
   
   const [groups, setGroups] = useState<any[]>([])
@@ -33,12 +35,8 @@ export default function Permissions() {
   const [aggregatedRoleBindings, setAggregatedRoleBindings] = useState<AggregatedRoleBinding[]>([])
   const [inheritedRoleBindings, setInheritedRoleBindings] = useState<AggregatedRoleBinding[]>([])
 
-  useEffect(() => {
-    refreshRbacData()
-    fetchGroups()
-  }, [refreshRbacData])
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
+    if (settings.GROUPS_ENABLED !== 'true') return
     try {
       const { data } = await httpRequests.groupList()
       if (data) {
@@ -47,7 +45,12 @@ export default function Permissions() {
     } catch (err) {
       console.error(err)
     }
-  }
+  }, [settings.GROUPS_ENABLED])
+
+  useEffect(() => {
+    refreshRbacData()
+    fetchGroups()
+  }, [refreshRbacData, fetchGroups])
 
   useEffect(() => {
     const userOptions: OptionType[] = users.map(u => ({
@@ -57,21 +60,19 @@ export default function Permissions() {
       originalObject: u
     }))
     
-    const groupOptions: OptionType[] = groups.map(g => ({
+    const groupOptions: OptionType[] = settings.GROUPS_ENABLED === 'true' ? groups.map(g => ({
       value: `group:${g.name}`,
       label: g.friendlyName || g.name,
       type: 'group',
       originalObject: g
-    }))
+    })) : []
     
     setOptions([...userOptions, ...groupOptions])
-  }, [users, groups])
+  }, [users, groups, settings.GROUPS_ENABLED])
 
   const loadSubjectPermissions = useCallback((subject: OptionType) => {
-    // 1. Initialize Direct Permissions from the CRD (subject.originalObject.resources)
     const directResources = subject.originalObject.resources || []
     
-    // Filter out ClusterAccess roles (they are handled via Radio buttons)
     const namespaceResources = directResources.filter((r: any) => 
       !(r.template.includes(templateClusterResourceRolePrefix) && r.namespaces.includes('ALL_NAMESPACES'))
     ).map((r: any) => ({
@@ -82,7 +83,6 @@ export default function Permissions() {
     
     setAggregatedRoleBindings(namespaceResources.length > 0 ? namespaceResources : [{ id: Math.random().toString(36).substring(7), namespaces: [], template: '' }])
 
-    // 2. Initialize Cluster Access from the CRD resources
     const clusterAccessResource = directResources.find((r: any) => 
       r.template.includes(templateClusterResourceRolePrefix) && r.namespaces.includes('ALL_NAMESPACES')
     )
@@ -99,8 +99,7 @@ export default function Permissions() {
       setClusterAccess('none')
     }
 
-    // 3. Collect Inherited Permissions for Users (from Groups)
-    if (subject.type === 'user') {
+    if (subject.type === 'user' && settings.GROUPS_ENABLED === 'true') {
       const userGroups = subject.originalObject.groups || []
       let inherited: AggregatedRoleBinding[] = []
       
@@ -138,7 +137,7 @@ export default function Permissions() {
       setInheritedRoleBindings([])
     }
     
-  }, [groups])
+  }, [groups, settings.GROUPS_ENABLED])
 
   useEffect(() => {
     if (selectedSubject) {
@@ -172,7 +171,6 @@ export default function Permissions() {
       const name = selectedSubject.originalObject.name
       const type = selectedSubject.type
 
-      // Filter out any empty templates that might have been left in the UI
       const validBindings = aggregatedRoleBindings.filter(rb => rb.template && rb.template.trim() !== '')
 
       let updatedResources: any[] = [];
@@ -184,10 +182,7 @@ export default function Permissions() {
         }))
 
         if (clusterAccess !== 'none') {
-          const roleName = clusterRoleBindings.find(crb => 
-            (clusterAccess === 'read' && crb.metadata.name.endsWith('read-only')) ||
-            (clusterAccess === 'write' && crb.metadata.name.endsWith('admin'))
-          )?.roleRef.name || (clusterAccess === 'read' ? 'template-cluster-resources___read-only' : 'template-cluster-resources___admin')
+          const roleName = clusterAccess === 'read' ? 'template-cluster-resources___read-only' : 'template-cluster-resources___admin'
 
           updatedResources.push({
             template: roleName,
@@ -207,11 +202,9 @@ export default function Permissions() {
 
       window.alert("Permissions saved successfully")
       
-      // Refresh the data to get the latest CRD objects
       await fetchGroups()
       await refreshUsers()
       
-      // We manually update the selectedSubject's originalObject to reflect the new state immediately
       setSelectedSubject((prev: any) => ({
         ...prev,
         originalObject: {
@@ -232,7 +225,9 @@ export default function Permissions() {
     <components.Option {...props}>
       <div className="flex flex-col">
         <span className="font-semibold text-[17px]">{props.data.label}</span>
-        <span className="text-[12px] uppercase tracking-widest text-apple-textTertiaryLight">{props.data.type}</span>
+        {settings.GROUPS_ENABLED === 'true' && (
+           <span className="text-[12px] uppercase tracking-widest text-apple-textTertiaryLight">{props.data.type}</span>
+        )}
       </div>
     </components.Option>
   )
@@ -249,8 +244,10 @@ export default function Permissions() {
         </h2>
 
         <div className="bg-white rounded-[12px] p-6 md:p-10 max-w-[800px] mx-auto shadow-apple">
-          <div className="mb-10">
-            <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">Select User or Group</label>
+          <div className="mb-10 w-full">
+            <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">
+                {settings.GROUPS_ENABLED === 'true' ? 'Select User or Group' : 'Select User'}
+            </label>
             <Select
               options={options}
               value={selectedSubject}
@@ -267,7 +264,8 @@ export default function Permissions() {
                   backgroundColor: '#fafafc',
                   '&:hover': {
                     borderColor: state.isFocused ? '#0071e3' : 'rgba(0, 0, 0, 0.1)',
-                  }
+                  },
+                  width: '100%'
                 }),
                 option: (base, state) => ({
                   ...base,
@@ -275,26 +273,33 @@ export default function Permissions() {
                   color: state.isSelected ? 'white' : 'rgba(0, 0, 0, 0.8)',
                   cursor: 'pointer',
                 }),
+                menu: (base) => ({
+                    ...base,
+                    width: '100%',
+                    zIndex: 50
+                })
               }}
             />
           </div>
 
           {selectedSubject && (
-            <form onSubmit={handleSubmit} className="space-y-10 animate-fade-in">
-              <div>
+            <form onSubmit={handleSubmit} className="space-y-10 animate-fade-in w-full">
+              <div className="w-full">
                 <h3 className="text-[21px] font-display font-semibold text-apple-nearBlack mb-4">
-                  Direct Permissions for <span className="text-apple-blue">{selectedSubject.label}</span>
+                  Direct Permissions for <span className="text-apple-blue break-all">{selectedSubject.label}</span>
                 </h3>
-                <Templates
-                  pairItems={aggregatedRoleBindings}
-                  savePair={savePair}
-                  setPairItems={setAggregatedRoleBindings}
-                  addEmptyPair={addEmptyPair}
-                />
+                <div className="w-full">
+                  <Templates
+                    pairItems={aggregatedRoleBindings}
+                    savePair={savePair}
+                    setPairItems={setAggregatedRoleBindings}
+                    addEmptyPair={addEmptyPair}
+                  />
+                </div>
               </div>
 
               {selectedSubject.type === 'user' && (
-                <div>
+                <div className="w-full">
                   <h3 className="text-[21px] font-display font-semibold text-apple-nearBlack mb-4">Cluster Access</h3>
                   <ClusterAccessRadio
                     clusterAccess={clusterAccess}
@@ -303,9 +308,9 @@ export default function Permissions() {
                 </div>
               )}
 
-              <div className="pt-6 flex justify-end">
+              <div className="pt-6 flex justify-end w-full">
                 <button
-                  className={`bg-apple-blue text-white rounded-[8px] px-[20px] py-[10px] text-[17px] font-text transition-all ${saveButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-apple-brightBlue'}`}
+                  className={`w-full sm:w-auto bg-apple-blue text-white rounded-[8px] px-[20px] py-[10px] text-[17px] font-text transition-all flex items-center justify-center ${saveButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-apple-brightBlue'}`}
                   disabled={saveButtonDisabled}
                   type="submit"
                 >
@@ -314,19 +319,23 @@ export default function Permissions() {
               </div>
 
               {((aggregatedRoleBindings.length > 0 && aggregatedRoleBindings.some(p => p.namespaces.length > 0)) || inheritedRoleBindings.length > 0) && (
-                <div className="pt-10 border-t border-[rgba(0,0,0,0.1)]">
+                <div className="pt-10 border-t border-[rgba(0,0,0,0.1)] w-full">
                    <h3 className="text-[21px] font-display font-semibold text-apple-nearBlack mb-6">Effective Permissions Summary</h3>
                    
-                   {inheritedRoleBindings.length > 0 && (
-                     <div className="mb-6 bg-[rgba(0,113,227,0.05)] p-6 rounded-[11px] border border-[rgba(0,113,227,0.2)]">
-                        <h4 className="text-[14px] font-text font-semibold text-apple-blue mb-4 uppercase tracking-widest">Inherited from Groups</h4>
-                        <Summary pairItems={inheritedRoleBindings} />
+                   {settings.GROUPS_ENABLED === 'true' && inheritedRoleBindings.length > 0 && (
+                     <div className="mb-6 bg-[rgba(0,113,227,0.05)] p-4 sm:p-6 rounded-[11px] border border-[rgba(0,113,227,0.2)] overflow-x-auto">
+                        <div className="min-w-[600px]">
+                          <h4 className="text-[14px] font-text font-semibold text-apple-blue mb-4 uppercase tracking-widest">Inherited from Groups</h4>
+                          <Summary pairItems={inheritedRoleBindings} />
+                        </div>
                      </div>
                    )}
 
-                   <div className="mb-6">
-                      <h4 className="text-[14px] font-text font-semibold text-apple-nearBlack mb-4 uppercase tracking-widest">Directly Assigned</h4>
-                      <Summary pairItems={aggregatedRoleBindings} />
+                   <div className="mb-6 overflow-x-auto">
+                      <div className="min-w-[600px]">
+                        <h4 className="text-[14px] font-text font-semibold text-apple-nearBlack mb-4 uppercase tracking-widest">Directly Assigned</h4>
+                        <Summary pairItems={aggregatedRoleBindings} />
+                      </div>
                    </div>
                 </div>
               )}

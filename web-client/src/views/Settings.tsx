@@ -6,7 +6,9 @@ export default function Settings() {
   const [settings, setSettings] = useState({
     CLUSTER_NAME: '',
     CONTROL_PLANE_ADDRESS: '',
-    BASIC_AUTH_PASSWORD: ''
+    BASIC_AUTH_PASSWORD: '',
+    GROUPS_ENABLED: 'true',
+    EXPIRED_USER_ACTION: 'DELETE'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -21,7 +23,9 @@ export default function Settings() {
         setSettings({
           CLUSTER_NAME: data.CLUSTER_NAME || '',
           CONTROL_PLANE_ADDRESS: data.CONTROL_PLANE_ADDRESS || '',
-          BASIC_AUTH_PASSWORD: data.BASIC_AUTH_PASSWORD || ''
+          BASIC_AUTH_PASSWORD: data.BASIC_AUTH_PASSWORD || '',
+          GROUPS_ENABLED: data.GROUPS_ENABLED !== undefined ? data.GROUPS_ENABLED : 'true',
+          EXPIRED_USER_ACTION: data.EXPIRED_USER_ACTION || 'DELETE'
         });
       } catch (err: any) {
         console.error(err);
@@ -123,10 +127,51 @@ export default function Settings() {
               <p className="mt-2 text-[10px] text-gray-400 italic font-medium ml-1">Warning: Changing this will affect your next login session.</p>
             </div>
 
-            <div className="pt-4 flex space-x-4">
+            <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-1">Group Management</h4>
+                  <p className="text-xs text-gray-600 font-medium leading-relaxed max-w-md">
+                    Enable or disable group assignment and group-based permission features throughout the application.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer group">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer" 
+                    checked={settings.GROUPS_ENABLED === 'true'}
+                    onChange={e => setSettings({ ...settings, GROUPS_ENABLED: e.target.checked ? 'true' : 'false' })}
+                  />
+                  <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-teal-600"></div>
+                </label>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-1">Expired User Action</h4>
+                  <p className="text-xs text-gray-600 font-medium leading-relaxed max-w-md">
+                    Choose what happens to users when their expiration date passes. "Keep" will retain the user but mark them as expired. "Delete" will automatically remove them from the cluster.
+                  </p>
+                </div>
+                <div>
+                  <select
+                    className="shadow-sm border-2 border-gray-200 rounded-xl py-2 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-teal-100 focus:border-teal-500 transition-all font-bold text-sm bg-white cursor-pointer"
+                    value={settings.EXPIRED_USER_ACTION}
+                    onChange={e => setSettings({ ...settings, EXPIRED_USER_ACTION: e.target.value })}
+                  >
+                    <option value="DELETE">Delete</option>
+                    <option value="KEEP">Keep</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex flex-col sm:flex-row gap-4">
               <button
                 type="submit"
-                className="flex-grow bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest flex items-center justify-center"
+                className="w-full sm:w-auto flex-grow bg-teal-600 hover:bg-teal-700 text-white font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest flex items-center justify-center"
                 disabled={isSaving}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
@@ -135,7 +180,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={handleRestart}
-                className="bg-white hover:bg-teal-50 text-teal-700 border-2 border-teal-600 font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest flex items-center justify-center"
+                className="w-full sm:w-auto bg-white hover:bg-teal-50 text-teal-700 border-2 border-teal-600 font-black py-3 px-10 rounded-xl shadow-lg transition-all transform active:scale-95 text-sm tracking-widest flex items-center justify-center"
                 disabled={isRestarting}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -145,18 +190,18 @@ export default function Settings() {
           </form>
         </div>
         
-        <div className="bg-orange-50 border-l-4 border-orange-400 p-6 rounded-r-xl shadow-sm">
-           <div className="flex">
-             <div className="flex-shrink-0">
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 sm:p-6 rounded-r-xl shadow-sm">
+           <div className="flex flex-col sm:flex-row">
+             <div className="flex-shrink-0 mb-3 sm:mb-0">
                <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                </svg>
              </div>
-             <div className="ml-4">
+             <div className="sm:ml-4">
                <p className="text-sm font-black text-orange-800 uppercase tracking-tight mb-1">Architecture Notice</p>
                <p className="text-xs text-orange-700 leading-relaxed">
-                 These settings are stored in the <code className="bg-orange-100 px-1 rounded">permission-manager</code> secret within the <code className="bg-orange-100 px-1 rounded">permission-manager</code> namespace. 
-                 Updating them here directly modifies the cluster state.
+                 These settings are stored in the <code className="bg-orange-100 px-1 rounded break-all">permission-manager</code> secret within the <code className="bg-orange-100 px-1 rounded break-all">permission-manager</code> namespace. 
+                 Updating them here directly modifies the cluster state. <strong>You must click "RESTART APP" to apply new configurations after saving.</strong>
                </p>
              </div>
            </div>

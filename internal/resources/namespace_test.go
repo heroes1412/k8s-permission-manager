@@ -11,7 +11,7 @@ func TestListNamespaces(t *testing.T) {
 	kc := NewFakeKubeClient()
 	ctx := context.Background()
 
-	svc := NewManager(kc, ctx)
+	svc := NewManager(kc, ctx, "permission-manager")
 
 	names, err := svc.NamespaceList()
 

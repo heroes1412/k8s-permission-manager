@@ -14,41 +14,45 @@ import RoleManagement from './views/RoleManagement'
 import Settings from './views/Settings'
 import Permissions from './views/Permissions'
 
+import {SettingsProvider} from './hooks/useSettings'
+
 export default function App() {
   return (
     <BrowserRouter>
-      <RbacProvider>
-        <UsersProvider>
-          <div
-            style={{
-              minHeight: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch'
-            }}
-          >
-            <div style={{ flexShrink: 0 }}>
-              <Header />
-            </div>
+      <SettingsProvider>
+        <RbacProvider>
+          <UsersProvider>
+            <div
+              style={{
+                minHeight: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch'
+              }}
+            >
+              <div style={{ flexShrink: 0 }}>
+                <Header />
+              </div>
 
-            <div style={{ flexGrow: 1, backgroundColor: '#f5f5f7' }}>
-              <Switch>
-                <Route path="/new-user" exact component={NewUser} />
-                <Route path="/users/:username" exact component={EditUser} />
-                <Route path="/namespaces" exact component={Namespaces} />
-                <Route path="/roles" exact component={RoleManagement} />
-                <Route path="/settings" exact component={Settings} />
-                <Route path="/permissions" exact component={Permissions} />
-                <Route path="/" exact component={Home} />
-              </Switch>
-            </div>
+              <div style={{ flexGrow: 1, backgroundColor: '#f5f5f7' }}>
+                <Switch>
+                  <Route path="/new-user" exact component={NewUser} />
+                  <Route path="/users/:username" exact component={EditUser} />
+                  <Route path="/namespaces" exact component={Namespaces} />
+                  <Route path="/roles" exact component={RoleManagement} />
+                  <Route path="/settings" exact component={Settings} />
+                  <Route path="/permissions" exact component={Permissions} />
+                  <Route path="/" exact component={Home} />
+                </Switch>
+              </div>
 
-            <div style={{ flexShrink: 0 }}>
-              <Footer />
+              <div style={{ flexShrink: 0 }}>
+                <Footer />
+              </div>
             </div>
-          </div>
-        </UsersProvider>
-      </RbacProvider>
+          </UsersProvider>
+        </RbacProvider>
+      </SettingsProvider>
     </BrowserRouter>
   )
 }

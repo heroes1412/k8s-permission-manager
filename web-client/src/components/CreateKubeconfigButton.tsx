@@ -43,6 +43,9 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
   const [copied, setCopied] = useState<boolean>(false);
   const {namespaceList} = useNamespaceList();
   
+  const isExpired = user.maxDays && user.maxDays > 0 && user.createdAt && 
+                    new Date().getTime() > new Date(user.createdAt).getTime() + user.maxDays * 24 * 60 * 60 * 1000;
+
   const allAvailableNamespaces = namespaceList.map(ns => ns.metadata.name);
   const validNamespaces = getValidNamespaces(user, allAvailableNamespaces);
 
@@ -60,15 +63,16 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
 
   useEffect(() => {
     // !kubeconfig.includes(chosenNamespace) is needed to remake the API request if the chosenNamespace changed
-    if (showModal && chosenNamespace && (kubeconfig === '' || !kubeconfig.includes("namespace: " + chosenNamespace))) {
+    if (showModal && chosenNamespace && !isExpired && (kubeconfig === '' || !kubeconfig.includes("namespace: " + chosenNamespace))) {
       httpRequests.kubeconfigCreate(user.name, chosenNamespace)
         .then(({data}) => {
           setKubeconfig(data.kubeconfig)
         })
     }
-  }, [kubeconfig, showModal, user.name, chosenNamespace])
+  }, [kubeconfig, showModal, user.name, chosenNamespace, isExpired])
 
   const handleDownload = () => {
+    if (isExpired) return;
     const element = document.createElement("a");
     const file = new Blob([kubeconfig], {type: 'text/yaml'});
     element.href = URL.createObjectURL(file);
@@ -101,17 +105,20 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
 
             <div className="flex flex-col sm:flex-row justify-end w-full mb-6 space-y-3 sm:space-y-0 sm:space-x-4">
               <button
-                className="bg-transparent hover:bg-[rgba(0,0,0,0.02)] text-apple-blue border-[2px] border-apple-blue font-text font-semibold py-[8px] px-[20px] rounded-[8px] transition-all text-[17px] flex items-center justify-center"
+                className={`bg-transparent hover:bg-[rgba(0,0,0,0.02)] text-apple-blue border-[2px] border-apple-blue font-text font-semibold py-[8px] px-[20px] rounded-[8px] transition-all text-[17px] flex items-center justify-center ${isExpired ? 'opacity-30 cursor-not-allowed' : ''}`}
                 type="button"
                 onClick={handleDownload}
+                disabled={isExpired}
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 Download Config
               </button>
               <button
-                className="bg-apple-blue hover:bg-apple-brightBlue text-white font-text font-semibold py-[8px] px-[20px] rounded-[8px] transition-all text-[17px]"
+                className={`bg-apple-blue hover:bg-apple-brightBlue text-white font-text font-semibold py-[8px] px-[20px] rounded-[8px] transition-all text-[17px] ${isExpired ? 'opacity-30 cursor-not-allowed' : ''}`}
                 type="button"
+                disabled={isExpired}
                 onClick={() => {
+                  if (isExpired) return;
                   if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(kubeconfig).then(
                       function () {
@@ -140,7 +147,7 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
               </button>
             </div>
 
-            {kubeconfig ? (
+            {kubeconfig && !isExpired ? (
               <div data-testid="yaml" className="bg-[#1d1d1f] rounded-[11px] p-6 shadow-inner border border-[#000000] overflow-auto max-h-[50vh]">
                 <Editor
                   autoFocus
@@ -157,7 +164,15 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
                 />
               </div>
             ) : (
-              <div className="py-16 text-center text-apple-textTertiaryLight font-text text-[17px]">Generating secure configuration...</div>
+              <div className="py-16 text-center text-apple-textTertiaryLight font-text text-[17px]">
+                {isExpired ? (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-12 h-12 text-[#ff3b30] mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span className="text-[#ff3b30] font-bold">User access is expired</span>
+                    <span className="text-sm mt-1">Renew user duration to access Kubeconfig</span>
+                  </div>
+                ) : 'Generating secure configuration...'}
+              </div>
             )}
           </div>
         </div>
@@ -169,7 +184,8 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
             <select
               value={chosenNamespace}
               onChange={e => setChosenNamespace(e.target.value)}
-              className="block appearance-none w-full bg-apple-buttonLight border-[2px] border-[rgba(0,0,0,0.04)] hover:border-apple-blue px-4 py-2 pr-10 rounded-[8px] leading-tight focus:outline-none focus:border-apple-blue transition-all text-apple-nearBlack font-text text-[14px]"
+              disabled={isExpired}
+              className={`block appearance-none w-full bg-apple-buttonLight border-[2px] border-[rgba(0,0,0,0.04)] px-4 py-2 pr-10 rounded-[8px] leading-tight focus:outline-none focus:border-apple-blue transition-all text-apple-nearBlack font-text text-[14px] ${isExpired ? 'opacity-50' : 'hover:border-apple-blue'}`}
             >
                 {validNamespaces.map((ns) => {
                     return (
@@ -191,13 +207,13 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
             onClick={() => setShowModal(true)}
             type="button"
         >
-            View Kubeconfig
+            {isExpired ? 'Check Status' : 'View Kubeconfig'}
         </button>
         <button
-            className={`flex-1 bg-apple-blue hover:bg-apple-brightBlue text-white font-text font-semibold py-[8px] px-[15px] rounded-[8px] transition-all text-[14px] flex items-center justify-center ${!kubeconfig && showModal ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex-1 bg-apple-blue hover:bg-apple-brightBlue text-white font-text font-semibold py-[8px] px-[15px] rounded-[8px] transition-all text-[14px] flex items-center justify-center ${isExpired || (!kubeconfig && showModal) ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleDownload}
             type="button"
-            disabled={!kubeconfig && showModal}
+            disabled={isExpired || (!kubeconfig && showModal)}
         >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             Download Kubeconfig

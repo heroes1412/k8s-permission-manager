@@ -38,6 +38,10 @@ func createGroup(c echo.Context) error {
 		return err
 	}
 
+	if !isValidK8sName(r.Name) {
+		return ac.errorResponse(invalidK8sNameError)
+	}
+
 	if r.Resources == nil {
 		r.Resources = make([]v1alpha1.PermissionManagerUserResource, 0)
 	}

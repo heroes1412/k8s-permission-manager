@@ -17,7 +17,7 @@ func TestCreateKubeconfig(t *testing.T) {
 		Namespace:           "test",
 	}
 
-	rs := NewManager(NewFakeKubeClient(), context.TODO())
+	rs := NewManager(NewFakeKubeClient(), context.TODO(), "permission-manager")
 
 	got := rs.ServiceAccountCreateKubeConfigForUser(clusterConfig, "john.doe", "test")
 

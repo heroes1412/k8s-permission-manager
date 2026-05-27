@@ -29,6 +29,8 @@ func updateSettings(c echo.Context) error {
 		ClusterName         string `json:"CLUSTER_NAME"`
 		ControlPlaneAddress string `json:"CONTROL_PLANE_ADDRESS"`
 		BasicAuthPassword   string `json:"BASIC_AUTH_PASSWORD"`
+		GroupsEnabled       string `json:"GROUPS_ENABLED"`
+		ExpiredUserAction   string `json:"EXPIRED_USER_ACTION"`
 	}
 
 	r := new(Request)
@@ -55,6 +57,8 @@ func updateSettings(c echo.Context) error {
 	secret.Data["CLUSTER_NAME"] = []byte(r.ClusterName)
 	secret.Data["CONTROL_PLANE_ADDRESS"] = []byte(r.ControlPlaneAddress)
 	secret.Data["BASIC_AUTH_PASSWORD"] = []byte(r.BasicAuthPassword)
+	secret.Data["GROUPS_ENABLED"] = []byte(r.GroupsEnabled)
+	secret.Data["EXPIRED_USER_ACTION"] = []byte(r.ExpiredUserAction)
 
 	// Update the secret in Kubernetes
 	_, err = ac.ResourceManager.SecretUpdate("permission-manager", secret)

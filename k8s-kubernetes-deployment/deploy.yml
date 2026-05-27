@@ -34,7 +34,7 @@ spec:
       serviceAccountName: permission-manager
       containers:
         - name: permission-manager
-          image: h2372/permission-manager:v4
+          image: h2372/permission-manager:dev
           ports:
             - containerPort: 4000
           env:
@@ -45,6 +45,34 @@ spec:
           envFrom:
             - secretRef:
                 name: permission-manager
+          # Fix #9: Resource limits prevent the container from consuming unbounded memory/CPU.
+          # If a leak were ever to occur, the limit caps the blast radius and Kubernetes
+          # will OOMKill + restart the container rather than starving the entire node.
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          # Fix #10: Probes allow Kubernetes to detect a stuck/unhealthy pod and restart it
+          # automatically without manual intervention.
+          livenessProbe:
+            httpGet:
+              path: /api/list-namespace
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/list-namespace
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
 ---
 apiVersion: v1
 kind: ServiceAccount

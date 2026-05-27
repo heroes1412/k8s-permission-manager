@@ -6,11 +6,11 @@ import (
 	"github.com/go-playground/validator"
 )
 
-const validUsernameRegex = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([@\\.-][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
-const validK8sNameRegex = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+const validUsernameRegex = "^[a-z]([-a-z0-9]*[a-z0-9])?([@\\.-][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+const validK8sNameRegex = "^[a-z]([-a-z0-9]*[a-z0-9])?$"
 
-var invalidUsernameError = `username must be lowercase alphanumeric, and can contain "-", ".", or "@" for emails, and must start and end with an alphanumeric character. regex used for validation is ` + validUsernameRegex
-var invalidK8sNameError = `name must be lowercase alphanumeric and can contain "-", and must start and end with an alphanumeric character. regex used for validation is ` + validK8sNameRegex
+var invalidUsernameError = `username must be lowercase alphanumeric, and can contain "-", ".", or "@" for emails, and must start with a letter and end with an alphanumeric character. regex used for validation is ` + validUsernameRegex
+var invalidK8sNameError = `name must be lowercase alphanumeric and can contain "-", and must start with a letter and end with an alphanumeric character. regex used for validation is ` + validK8sNameRegex
 
 func isValidUsername(username string) (valid bool) {
 	re := regexp.MustCompile(validUsernameRegex)

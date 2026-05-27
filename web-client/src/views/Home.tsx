@@ -3,9 +3,11 @@ import {useUsers} from '../hooks/useUsers'
 import {Link} from 'react-router-dom'
 import { httpRequests } from '../services/httpRequests'
 import { FullScreenLoader } from '../components/Loader'
+import { useSettings } from '../hooks/useSettings'
 
 export default function Home() {
   const { users, loading, loaded, refreshUsers } = useUsers()
+  const { settings } = useSettings()
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async (username: string) => {
@@ -28,27 +30,27 @@ export default function Home() {
       <div className="max-w-6xl mx-auto px-4">
         {(loading || isDeleting) && <FullScreenLoader />}
         <div className=" bg-white shadow-xl rounded-xl p-8 mb-4">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <h2 className="text-2xl text-gray-800 font-black flex items-center tracking-tight">
               <svg className="w-8 h-8 mr-3 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
               Users
             </h2>
-            <Link to="/new-user">
-              <button className="bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center text-sm tracking-widest uppercase">
+            <Link to="/new-user" className="w-full sm:w-auto">
+              <button className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center text-sm tracking-widest uppercase">
                 <svg className="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-60H6"></path></svg>
                 CREATE NEW USER
               </button>
             </Link>
           </div>
 
-          <div className="my-6 border-t pt-4">
-            <table className="text-left w-full border-collapse">
+          <div className="my-6 border-t pt-4 overflow-x-auto">
+            <table className="text-left w-full border-collapse min-w-[600px]">
               <thead>
                 <tr>
                   <th className="py-4 px-6 bg-gray-50 font-black uppercase text-xs text-gray-500 border-b border-gray-100 tracking-widest">
                     User Identity
                   </th>
-                  <th className="py-4 px-6 bg-gray-50 font-black uppercase text-xs text-gray-500 border-b border-gray-100 text-right tracking-widest">
+                  <th className="py-4 px-6 bg-gray-50 font-black uppercase text-xs text-gray-500 border-b border-gray-100 text-right tracking-widest w-1 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -72,35 +74,39 @@ export default function Home() {
                       new Date().getTime() > new Date(u.createdAt).getTime() + u.maxDays * 24 * 60 * 60 * 1000;
                     
                     const daysLeft = u.maxDays && u.maxDays > 0 && u.createdAt ? 
-                      Math.ceil((new Date(u.createdAt).getTime() + u.maxDays * 24 * 60 * 60 * 1000 - new Date().getTime()) / (24 * 60 * 60 * 1000)) : null;
+                      Math.round((new Date(u.createdAt).getTime() + u.maxDays * 24 * 60 * 60 * 1000 - new Date().getTime()) / (24 * 60 * 60 * 1000)) : null;
 
                     return (
                       <tr key={u.name} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0">
-                        <td className="py-3 px-6 text-gray-800">
-                          <div className="flex items-center">
-                            <Link to={`/users/${u.name}`} className="underline text-teal-700 hover:text-teal-900 font-black tracking-tight text-base">
+                        <td className="py-3 px-6 text-gray-800 break-all">
+                          <div className="flex flex-wrap items-center">
+                            <Link 
+                              to={`/users/${u.name}`} 
+                              className={`font-black tracking-tight text-base mr-2 ${isExpired && settings.EXPIRED_USER_ACTION === 'KEEP' ? 'line-through text-gray-400 hover:text-gray-500' : 'text-teal-700 hover:text-teal-900'}`}
+                            >
                               {u.friendlyName || u.name}
                             </Link>
                             {isExpired ? (
-                              <span className="ml-3 px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-black uppercase rounded-md tracking-tighter border border-red-200">Expired</span>
-                            ) : daysLeft !== null && daysLeft <= 7 ? (
-                              <span className="ml-3 px-2 py-0.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase rounded-md tracking-tighter border border-orange-200">
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[11px] font-bold rounded border border-gray-200 mt-1 sm:mt-0">Expired</span>
+                            ) : daysLeft !== null ? (
+                              <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[11px] font-medium rounded border border-gray-200 mt-1 sm:mt-0">
                                 {daysLeft <= 0 ? 'Expiring soon' : `${daysLeft}d left`}
                               </span>
                             ) : null}
                           </div>
-                          {u.friendlyName && <div className="text-[11px] text-gray-400 font-mono italic">Internal ID: {u.name}</div>}
-                          {u.groups && u.groups.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                          {u.friendlyName && <div className={`text-[11px] font-mono italic mt-1 ${isExpired && settings.EXPIRED_USER_ACTION === 'KEEP' ? 'text-gray-300' : 'text-gray-400'}`}>Internal ID: {u.name}</div>}
+                          {settings.GROUPS_ENABLED === 'true' && u.groups && u.groups.length > 0 && (
+                            <div className={`flex flex-wrap items-center gap-1 mt-1.5 ${isExpired && settings.EXPIRED_USER_ACTION === 'KEEP' ? 'opacity-50' : ''}`}>
+                              <span className="text-[11px] text-gray-500 font-medium mr-1">Groups:</span>
                               {u.groups.map(g => (
-                                <span key={g} className="px-1.5 py-0.5 bg-teal-50 text-teal-600 text-[9px] font-bold uppercase rounded border border-teal-100">
+                                <span key={g} className="px-1.5 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded border border-gray-200">
                                   {g}
                                 </span>
                               ))}
                             </div>
                           )}
                         </td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-4 px-6 text-right w-1 whitespace-nowrap">
                           <button
                             onClick={() => handleDelete(u.name)}
                             className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"

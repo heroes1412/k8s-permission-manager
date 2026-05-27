@@ -6,18 +6,29 @@ import { User } from "../types"
 import { httpRequests } from "../services/httpRequests"
 import CreateKubeconfigButton from "./CreateKubeconfigButton"
 import GroupMultiSelect from "./GroupMultiSelect"
+import { useSettings } from '../hooks/useSettings'
 
 interface EditUserParameters {
   readonly user: User;
 }
 
 export default function EditUser({ user }: EditUserParameters) {
+  const { settings } = useSettings()
   const [showLoader, setShowLoader] = useState<boolean>(false)
   const username = user.name
   const history = useHistory()
   const { refreshUsers } = useUsers()
 
-  const [maxDays, setMaxDays] = useState<number>(user.maxDays || 0)
+  const calculateDaysLeft = () => {
+    if (!user.maxDays || user.maxDays <= 0 || !user.createdAt) return 0;
+    const createdAt = new Date(user.createdAt).getTime();
+    const expiresAt = createdAt + user.maxDays * 24 * 60 * 60 * 1000;
+    const now = new Date().getTime();
+    const left = Math.round((expiresAt - now) / (24 * 60 * 60 * 1000));
+    return left > 0 ? left : 0;
+  }
+
+  const [maxDays, setMaxDays] = useState<number>(user.maxDays > 0 ? calculateDaysLeft() : 0)
   const [groups, setGroups] = useState<string[]>(user.groups || [])
 
   async function handleUserDeletion() {
@@ -29,7 +40,16 @@ export default function EditUser({ user }: EditUserParameters) {
     e.preventDefault()
     setShowLoader(true)
     try {
-      await httpRequests.userRequests.update(username, maxDays, groups, user.resources || [])
+      // Calculate new total maxDays relative to createdAt
+      let newTotalMaxDays = 0;
+      if (maxDays > 0) {
+        const now = new Date().getTime();
+        const createdAt = new Date(user.createdAt || now).getTime();
+        const wantedExpiresAt = now + maxDays * 24 * 60 * 60 * 1000;
+        newTotalMaxDays = Math.round((wantedExpiresAt - createdAt) / (24 * 60 * 60 * 1000));
+      }
+
+      await httpRequests.userRequests.update(username, newTotalMaxDays, groups, user.resources || [])
       if (reloadAfterSubmit) {
         window.location.reload()
       }
@@ -64,22 +84,25 @@ export default function EditUser({ user }: EditUserParameters) {
                 value={maxDays}
                 onChange={e => setMaxDays(parseInt(e.target.value) || 0)}
               />
+              <p className="mt-1 text-[12px] text-apple-textTertiaryLight font-medium italic">User will expire in {maxDays} days from now.</p>
             </div>
 
-            <div>
-              <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">Assigned Groups</label>
-              <GroupMultiSelect
-                value={groups}
-                onSelect={setGroups}
-                placeholder="Select or create groups..."
-              />
-            </div>
+            {settings.GROUPS_ENABLED === 'true' && (
+              <div>
+                <label className="block text-[17px] font-text font-semibold text-apple-nearBlack mb-2 tracking-[-0.374px]">Assigned Groups</label>
+                <GroupMultiSelect
+                  value={groups}
+                  onSelect={setGroups}
+                  placeholder="Select or create groups..."
+                />
+              </div>
+            )}
 
-            <div className="pt-6 flex justify-between items-center">
+            <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
               <button
                 tabIndex={-1}
                 type="button"
-                className="bg-transparent text-[#ff3b30] border border-[#ff3b30] rounded-pill px-[15px] py-[8px] text-[17px] font-text hover:bg-[#ff3b30] hover:text-white transition-all"
+                className="w-full sm:w-auto bg-transparent text-[#ff3b30] border border-[#ff3b30] rounded-pill px-[15px] py-[8px] text-[17px] font-text hover:bg-[#ff3b30] hover:text-white transition-all flex items-center justify-center"
                 onClick={() => {
                   const confirmed = window.confirm(`Confirm deletion of User ${username}`)
                   if (confirmed) {
@@ -94,7 +117,7 @@ export default function EditUser({ user }: EditUserParameters) {
               </button>
               
               <button
-                className="bg-apple-blue text-white rounded-[8px] px-[15px] py-[8px] text-[17px] font-text hover:bg-apple-brightBlue transition-all"
+                className="w-full sm:w-auto bg-apple-blue text-white rounded-[8px] px-[15px] py-[8px] text-[17px] font-text hover:bg-apple-brightBlue transition-all flex items-center justify-center"
                 type="submit"
               >
                 Save User

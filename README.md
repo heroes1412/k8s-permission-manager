@@ -19,6 +19,8 @@ v3: fix this, fix that, optimize this, optimize that
 
 v4: Group Features
 
+v5: fix + responsive design
+
 docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v4 .
 
 ## Screenshots

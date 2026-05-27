@@ -125,7 +125,7 @@ func (r *V1Alpha1PermissionManagerUser) Create(username string, maxDays int, gro
 		return User{}, err
 	}
 
-	_, err = r.kubeclient.Discovery().RESTClient().Post().AbsPath(v1alpha1.ResourceURL).Body(jsonPayload).DoRaw(r.context)
+	_, err = r.kubeclient.Discovery().RESTClient().Post().AbsPath(v1alpha1.ResourceURL).SetHeader("Content-Type", "application/json").SetHeader("Accept", "application/json").Body(jsonPayload).DoRaw(r.context)
 
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "already exists") {

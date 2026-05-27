@@ -116,7 +116,7 @@ func (r *V1Alpha1PermissionManagerGroup) Update(group v1alpha1.PermissionManager
 		return Group{}, err
 	}
 
-	_, err = r.kubeclient.Discovery().RESTClient().Put().AbsPath(v1alpha1.GroupResourceURL + "/" + group.Metadata.Name).Body(jsonPayload).DoRaw(r.context)
+	_, err = r.kubeclient.Discovery().RESTClient().Put().AbsPath(v1alpha1.GroupResourceURL + "/" + group.Metadata.Name).SetHeader("Content-Type", "application/json").SetHeader("Accept", "application/json").Body(jsonPayload).DoRaw(r.context)
 
 	if err != nil {
 		return Group{}, err

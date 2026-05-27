@@ -25,7 +25,7 @@ You can use your preferred package manager to install the requirements but we re
 
 ### Use asdf and direnv
 
-1. Install and configure asdf and direnv as described in the [official documentation](https://asdf-vm.com/#/core-manage-asdf-vm?id=install) and [this article](https://blog.sighup.io/manage-tools-with-ease-direnv-asdf/)
+1. Install and configure asdf and direnv as described in the [official documentation](https://asdf-vm.com/#/core-manage-asdf-vm?id=install)
 2. Add the required asdf plugins to your asdf installation
 
     ```shell
