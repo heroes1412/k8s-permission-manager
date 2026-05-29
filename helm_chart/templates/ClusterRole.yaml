@@ -49,3 +49,8 @@ rules:
     resources:
       - "pods"
     verbs: [ "get", "list", "watch" ]
+  # Allow to create subjectaccessreviews for permission testing
+  - apiGroups: [ "authorization.k8s.io" ]
+    resources:
+      - "subjectaccessreviews"
+    verbs: [ "create" ]

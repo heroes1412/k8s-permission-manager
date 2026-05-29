@@ -8,7 +8,7 @@ Permission Manager is an application developed by [SIGHUP](https://sighup.io) th
 
 With Permission Manager, you can create users, assign namespaces/permissions, and distribute Kubeconfig YAML files via a nice&easy web UI.
 
-The lastest image is: h2372/permission-manager:v5
+The lastest image is: h2372/permission-manager:v6
 
 ## Changelog tags:
 v1: fix some minor bugs, add support for k8s v1.35
@@ -21,7 +21,9 @@ v4: Group Features
 
 v5: fix + responsive design
 
-docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v4 .
+v6: add Access Audit, export gitops resource, web hook, can i
+
+docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v6 .
 
 ## Screenshots
 

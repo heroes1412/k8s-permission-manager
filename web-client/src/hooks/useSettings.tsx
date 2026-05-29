@@ -7,6 +7,11 @@ interface Settings {
     BASIC_AUTH_PASSWORD: string;
     GROUPS_ENABLED: string;
     EXPIRED_USER_ACTION: string;
+    WEBHOOK_URL?: string;
+    WEBHOOK_PROXY_URL?: string;
+    WEBHOOK_PROXY_USER?: string;
+    WEBHOOK_PROXY_PASSWORD?: string;
+    SYSTEM_PROTECTED_NAMESPACES: string;
 }
 
 interface SettingsProvider {
@@ -21,7 +26,8 @@ const defaultSettings: Settings = {
     CONTROL_PLANE_ADDRESS: '',
     BASIC_AUTH_PASSWORD: '',
     GROUPS_ENABLED: 'true',
-    EXPIRED_USER_ACTION: 'DELETE'
+    EXPIRED_USER_ACTION: 'DELETE',
+    SYSTEM_PROTECTED_NAMESPACES: 'default,kube-system,kube-public,kube-node-lease,permission-manager'
 };
 
 function useSettingsFromApi(): SettingsProvider {
@@ -40,7 +46,12 @@ function useSettingsFromApi(): SettingsProvider {
         CONTROL_PLANE_ADDRESS: data.CONTROL_PLANE_ADDRESS || '',
         BASIC_AUTH_PASSWORD: data.BASIC_AUTH_PASSWORD || '',
         GROUPS_ENABLED: data.GROUPS_ENABLED !== undefined ? data.GROUPS_ENABLED : 'true',
-        EXPIRED_USER_ACTION: data.EXPIRED_USER_ACTION || 'DELETE'
+        EXPIRED_USER_ACTION: data.EXPIRED_USER_ACTION || 'DELETE',
+        WEBHOOK_URL: data.WEBHOOK_URL || '',
+        WEBHOOK_PROXY_URL: data.WEBHOOK_PROXY_URL || '',
+        WEBHOOK_PROXY_USER: data.WEBHOOK_PROXY_USER || '',
+        WEBHOOK_PROXY_PASSWORD: data.WEBHOOK_PROXY_PASSWORD || '',
+        SYSTEM_PROTECTED_NAMESPACES: data.SYSTEM_PROTECTED_NAMESPACES || 'default,kube-system,kube-public,kube-node-lease,permission-manager'
       });
     }).catch(err => {
         setLoading(false);

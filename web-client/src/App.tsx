@@ -13,6 +13,8 @@ import Namespaces from './components/namespaces'
 import RoleManagement from './views/RoleManagement'
 import Settings from './views/Settings'
 import Permissions from './views/Permissions'
+import AccessAudit from './views/AccessAudit'
+import Visualizer from './views/Visualizer'
 
 import {SettingsProvider} from './hooks/useSettings'
 
@@ -42,6 +44,8 @@ export default function App() {
                   <Route path="/roles" exact component={RoleManagement} />
                   <Route path="/settings" exact component={Settings} />
                   <Route path="/permissions" exact component={Permissions} />
+                  <Route path="/audit" exact component={AccessAudit} />
+                  <Route path="/visualizer" exact component={Visualizer} />
                   <Route path="/" exact component={Home} />
                 </Switch>
               </div>

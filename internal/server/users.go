@@ -61,6 +61,8 @@ func createUser(c echo.Context) error {
 		log.Printf("Failed to sync user %s: %v", r.Name, err)
 	}
 
+	sendWebhookNotification(ac.ResourceManager, "🎉 User `"+r.Name+"` has been created.")
+
 	return ac.okResponseWithData(u)
 }
 
@@ -126,6 +128,8 @@ func updateUser(c echo.Context) error {
 		}
 	}
 
+	sendWebhookNotification(ac.ResourceManager, "🔄 User `"+r.Name+"` has been updated.")
+
 	return ac.okResponseWithData(u)
 }
 
@@ -169,6 +173,8 @@ func deleteUser(c echo.Context) error {
 	if err != nil {
 		return ac.errorResponse(err.Error())
 	}
+
+	sendWebhookNotification(ac.ResourceManager, "🗑️ User `"+r.Username+"` has been deleted.")
 
 	return ac.okResponse()
 }

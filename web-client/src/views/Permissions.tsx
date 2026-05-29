@@ -11,6 +11,8 @@ import { ClusterAccess } from "../components/types"
 import { httpRequests } from "../services/httpRequests"
 import { templateClusterResourceRolePrefix } from '../constants'
 import { useSettings } from '../hooks/useSettings'
+import GroupDryRunModal from '../components/GroupDryRunModal'
+import { useNamespaceList } from '../hooks/useNamespaceList'
 
 type SubjectType = 'user' | 'group'
 
@@ -34,6 +36,19 @@ export default function Permissions() {
   const [clusterAccess, setClusterAccess] = useState<ClusterAccess>('none')
   const [aggregatedRoleBindings, setAggregatedRoleBindings] = useState<AggregatedRoleBinding[]>([])
   const [inheritedRoleBindings, setInheritedRoleBindings] = useState<AggregatedRoleBinding[]>([])
+
+  // Dry-Run State
+  const [showDryRun, setShowDryRun] = useState(false);
+  const [dryRunData, setDryRunData] = useState<{ affectedUsers: string[], updatedResources: any[], name: string } | null>(null);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
+
+  // Test Permissions State
+  const { namespaceList } = useNamespaceList();
+  const [testNamespace, setTestNamespace] = useState<string>('default');
+  const [testResource, setTestResource] = useState<string>('pods');
+  const [testVerb, setTestVerb] = useState<string>('get');
+  const [testResult, setTestResult] = useState<boolean | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const fetchGroups = useCallback(async () => {
     if (settings.GROUPS_ENABLED !== 'true') return
@@ -142,10 +157,12 @@ export default function Permissions() {
   useEffect(() => {
     if (selectedSubject) {
       loadSubjectPermissions(selectedSubject)
+      setTestResult(null); // Reset test results when subject changes
     } else {
       setAggregatedRoleBindings([])
       setInheritedRoleBindings([])
       setClusterAccess('none')
+      setTestResult(null);
     }
   }, [selectedSubject, loadSubjectPermissions])
 
@@ -166,7 +183,6 @@ export default function Permissions() {
     e.preventDefault()
     if (!selectedSubject) return
     
-    setShowLoader(true)
     try {
       const name = selectedSubject.originalObject.name
       const type = selectedSubject.type
@@ -176,6 +192,7 @@ export default function Permissions() {
       let updatedResources: any[] = [];
 
       if (type === 'user') {
+        setShowLoader(true);
         updatedResources = validBindings.map(rb => ({
           template: rb.template,
           namespaces: Array.isArray(rb.namespaces) ? rb.namespaces : [rb.namespaces]
@@ -191,35 +208,88 @@ export default function Permissions() {
         }
         
         await httpRequests.userRequests.update(name, selectedSubject.originalObject.maxDays, selectedSubject.originalObject.groups, updatedResources)
+        
+        window.alert("Permissions saved successfully")
+        await fetchGroups()
+        await refreshUsers()
+        
+        setSelectedSubject((prev: any) => ({
+          ...prev,
+          originalObject: {
+            ...prev.originalObject,
+            resources: updatedResources
+          }
+        }))
+        setShowLoader(false);
       } else {
+        // GROUP: Initialize Dry-Run instead of saving immediately
         updatedResources = validBindings.map(rb => ({
           template: rb.template,
           namespaces: Array.isArray(rb.namespaces) ? rb.namespaces : [rb.namespaces]
         }))
         
-        await httpRequests.groupUpdate(name, updatedResources)
-      }
+        const affectedUsers = users
+          .filter(u => u.groups && u.groups.includes(name))
+          .map(u => u.friendlyName || u.name);
 
-      window.alert("Permissions saved successfully")
+        setDryRunData({ affectedUsers, updatedResources, name });
+        setShowDryRun(true);
+      }
       
-      await fetchGroups()
-      await refreshUsers()
+    } catch (err) {
+      console.error(err)
+      window.alert("Failed to prepare permissions")
+      setShowLoader(false)
+    }
+  }
+
+  const handleConfirmGroupSave = async () => {
+    if (!dryRunData) return;
+    
+    setIsSavingGroup(true);
+    try {
+      await httpRequests.groupUpdate(dryRunData.name, dryRunData.updatedResources);
+      window.alert("Group permissions saved successfully");
+      
+      await fetchGroups();
+      await refreshUsers();
       
       setSelectedSubject((prev: any) => ({
         ...prev,
         originalObject: {
           ...prev.originalObject,
-          resources: updatedResources
+          resources: dryRunData.updatedResources
         }
-      }))
+      }));
       
+      setShowDryRun(false);
     } catch (err) {
-      console.error(err)
-      window.alert("Failed to save permissions")
+      console.error(err);
+      window.alert("Failed to save group permissions");
     } finally {
-      setShowLoader(false)
+      setIsSavingGroup(false);
     }
-  }
+  };
+
+  const handleTestPermission = async () => {
+    if (!selectedSubject || selectedSubject.type !== 'user') return;
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const { data } = await httpRequests.httpClient.post('/api/check-permission', {
+        username: selectedSubject.originalObject.name,
+        namespace: testNamespace,
+        resource: testResource,
+        verb: testVerb
+      });
+      setTestResult(data.allowed);
+    } catch (err) {
+      console.error(err);
+      window.alert("Failed to test permission");
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const CustomOption = (props: any) => (
     <components.Option {...props}>
@@ -237,6 +307,16 @@ export default function Permissions() {
   return (
     <div className="bg-apple-lightGray min-h-screen py-16 flex flex-col items-center px-4">
       {showLoader && <FullScreenLoader />}
+      {dryRunData && (
+        <GroupDryRunModal
+          isOpen={showDryRun}
+          onDismiss={() => setShowDryRun(false)}
+          onConfirm={handleConfirmGroupSave}
+          groupName={dryRunData.name}
+          affectedUsers={dryRunData.affectedUsers}
+          isSaving={isSavingGroup}
+        />
+      )}
       
       <div className="w-full max-w-[980px]">
         <h2 className="text-apple-nearBlack text-[40px] md:text-[56px] font-display font-semibold leading-[1.07] tracking-[-0.28px] text-center mb-12">
@@ -308,7 +388,7 @@ export default function Permissions() {
                 </div>
               )}
 
-              <div className="pt-6 flex justify-end w-full">
+              <div className={`pt-6 flex justify-end w-full ${selectedSubject.type === 'user' ? 'border-b border-[rgba(0,0,0,0.1)] pb-10' : ''}`}>
                 <button
                   className={`w-full sm:w-auto bg-apple-blue text-white rounded-[8px] px-[20px] py-[10px] text-[17px] font-text transition-all flex items-center justify-center ${saveButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-apple-brightBlue'}`}
                   disabled={saveButtonDisabled}
@@ -317,6 +397,68 @@ export default function Permissions() {
                   Save Permissions
                 </button>
               </div>
+
+              {selectedSubject.type === 'user' && (
+                <div className="w-full">
+                  <h3 className="text-[21px] font-display font-semibold text-apple-nearBlack mb-4">Test Access (Can-I)</h3>
+                  <div className="bg-[rgba(0,0,0,0.02)] p-4 sm:p-6 rounded-[11px] border border-[rgba(0,0,0,0.05)]">
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                      <div className="flex-1">
+                        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Verb</label>
+                        <select value={testVerb} onChange={e => setTestVerb(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none">
+                          <option value="get">get</option>
+                          <option value="list">list</option>
+                          <option value="create">create</option>
+                          <option value="update">update</option>
+                          <option value="delete">delete</option>
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Resource</label>
+                        <select value={testResource} onChange={e => setTestResource(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none">
+                          <option value="configmaps">configmaps</option>
+                          <option value="daemonsets">daemonsets</option>
+                          <option value="deployments">deployments</option>
+                          <option value="endpoints">endpoints</option>
+                          <option value="events">events</option>
+                          <option value="horizontalpodautoscalers">horizontalpodautoscalers</option>
+                          <option value="httproutes">httproutes</option>
+                          <option value="ingresses">ingresses</option>
+                          <option value="persistentvolumeclaims">persistentvolumeclaims</option>
+                          <option value="poddisruptionbudgets">poddisruptionbudgets</option>
+                          <option value="pods">pods</option>
+                          <option value="pods/log">pods/log</option>
+                          <option value="replicasets">replicasets</option>
+                          <option value="replicationcontrollers">replicationcontrollers</option>
+                          <option value="secrets">secrets</option>
+                          <option value="services">services</option>
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-1 ml-1">Namespace</label>
+                        <select value={testNamespace} onChange={e => setTestNamespace(e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none">
+                          <option value="">(Cluster-scoped)</option>
+                          {namespaceList.map(ns => <option key={ns.metadata.name} value={ns.metadata.name}>{ns.metadata.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <button type="button" onClick={handleTestPermission} disabled={isTesting} className="w-full sm:w-auto bg-gray-800 text-white rounded-lg px-6 py-2 text-sm font-bold tracking-widest uppercase hover:bg-gray-700 transition-colors disabled:opacity-50 h-[38px]">
+                          {isTesting ? '...' : 'TEST'}
+                        </button>
+                      </div>
+                    </div>
+                    {testResult !== null && (
+                      <div className={`p-3 rounded-lg border ${testResult ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'} flex items-center`}>
+                        {testResult ? (
+                          <><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg> <strong className="mr-1">YES.</strong> User is allowed.</>
+                        ) : (
+                          <><svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg> <strong className="mr-1">NO.</strong> User is forbidden.</>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {((aggregatedRoleBindings.length > 0 && aggregatedRoleBindings.some(p => p.namespaces.length > 0)) || inheritedRoleBindings.length > 0) && (
                 <div className="pt-10 border-t border-[rgba(0,0,0,0.1)] w-full">

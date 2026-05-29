@@ -22,7 +22,7 @@ class HttpRequests {
   public readonly userRequests: UserRequests;
 
 
-  private httpClient: AxiosInstance;
+  public httpClient: AxiosInstance;
 
   constructor(httpClientFactory: () => AxiosInstance) {
 

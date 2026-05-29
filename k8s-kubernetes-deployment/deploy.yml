@@ -35,6 +35,7 @@ spec:
       containers:
         - name: permission-manager
           image: h2372/permission-manager:dev
+          imagePullPolicy: Always
           ports:
             - containerPort: 4000
           env:
@@ -59,7 +60,7 @@ spec:
           # automatically without manual intervention.
           livenessProbe:
             httpGet:
-              path: /api/list-namespace
+              path: /api/health
               port: 4000
             initialDelaySeconds: 15
             periodSeconds: 30
@@ -67,7 +68,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /api/list-namespace
+              path: /api/health
               port: 4000
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -101,6 +102,10 @@ rules:
   - apiGroups: ["certificates.k8s.io"]
     resources: ["*"]
     verbs: ["*"]
+  # Allow to create subjectaccessreviews for permission testing
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
   # Support all other common groups for templates and internal CRDs
   - apiGroups: ["networking.k8s.io", "apps", "batch", "autoscaling", "gateway.networking.k8s.io", "permissionmanager.user"]
     resources: ["*"]

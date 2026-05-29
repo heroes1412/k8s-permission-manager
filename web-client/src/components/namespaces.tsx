@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { httpRequests } from '../services/httpRequests';
 import { FullScreenLoader } from './Loader';
+import { useSettings } from '../hooks/useSettings';
 
 export default function Namespaces() {
+  const { settings } = useSettings();
   const [namespaces, setNamespaces] = useState<string[]>([]);
   const [newNamespace, setNewNamespace] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -192,13 +194,16 @@ export default function Namespaces() {
                       </td>
                     </tr>
                   ) : (
-                    namespaces.map((ns) => (
+                    namespaces.map((ns) => {
+                      const protectedNamespaces = settings.SYSTEM_PROTECTED_NAMESPACES ? settings.SYSTEM_PROTECTED_NAMESPACES.split(',') : [];
+                      const isProtected = protectedNamespaces.includes(ns);
+                      return (
                       <tr key={ns} className="hover:bg-gray-50/50 border-b border-gray-100 last:border-0 transition-colors">
                         <td className="py-4 px-6 text-gray-800 font-bold text-base break-all">
                           {ns}
                         </td>
                         <td className="py-4 px-6 text-right w-1 whitespace-nowrap">
-                          {['default', 'kube-system', 'kube-public', 'kube-node-lease', 'permission-manager'].includes(ns) ? (
+                          {isProtected ? (
                             <span className="text-[10px] text-gray-300 font-black uppercase tracking-tighter">System Protected</span>
                           ) : (
                             <button
@@ -210,7 +215,8 @@ export default function Namespaces() {
                           )}
                         </td>
                       </tr>
-                    ))
+                      )
+                    })
                   )}
                 </tbody>
               </table>

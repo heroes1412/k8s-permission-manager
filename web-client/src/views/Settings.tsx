@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { httpRequests } from '../services/httpRequests';
 import { FullScreenLoader } from '../components/Loader';
+import NamespaceMultiSelect from '../components/NamespaceMultiSelect';
 
 export default function Settings() {
   const [settings, setSettings] = useState({
@@ -8,7 +9,12 @@ export default function Settings() {
     CONTROL_PLANE_ADDRESS: '',
     BASIC_AUTH_PASSWORD: '',
     GROUPS_ENABLED: 'true',
-    EXPIRED_USER_ACTION: 'DELETE'
+    EXPIRED_USER_ACTION: 'DELETE',
+    WEBHOOK_URL: '',
+    WEBHOOK_PROXY_URL: '',
+    WEBHOOK_PROXY_USER: '',
+    WEBHOOK_PROXY_PASSWORD: '',
+    SYSTEM_PROTECTED_NAMESPACES: 'default,kube-system,kube-public,kube-node-lease,permission-manager'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +31,12 @@ export default function Settings() {
           CONTROL_PLANE_ADDRESS: data.CONTROL_PLANE_ADDRESS || '',
           BASIC_AUTH_PASSWORD: data.BASIC_AUTH_PASSWORD || '',
           GROUPS_ENABLED: data.GROUPS_ENABLED !== undefined ? data.GROUPS_ENABLED : 'true',
-          EXPIRED_USER_ACTION: data.EXPIRED_USER_ACTION || 'DELETE'
+          EXPIRED_USER_ACTION: data.EXPIRED_USER_ACTION || 'DELETE',
+          WEBHOOK_URL: data.WEBHOOK_URL || '',
+          WEBHOOK_PROXY_URL: data.WEBHOOK_PROXY_URL || '',
+          WEBHOOK_PROXY_USER: data.WEBHOOK_PROXY_USER || '',
+          WEBHOOK_PROXY_PASSWORD: data.WEBHOOK_PROXY_PASSWORD || '',
+          SYSTEM_PROTECTED_NAMESPACES: data.SYSTEM_PROTECTED_NAMESPACES || 'default,kube-system,kube-public,kube-node-lease,permission-manager'
         });
       } catch (err: any) {
         console.error(err);
@@ -124,7 +135,7 @@ export default function Settings() {
                 onChange={e => setSettings({ ...settings, BASIC_AUTH_PASSWORD: e.target.value })}
                 required
               />
-              <p className="mt-2 text-[10px] text-gray-400 italic font-medium ml-1">Warning: Changing this will affect your next login session.</p>
+              <p className="mt-2 text-[10px] text-gray-400 italic font-medium ml-1">Leave as ******** to keep current password. Warning: Changing this will affect your next login session.</p>
             </div>
 
             <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
@@ -166,6 +177,131 @@ export default function Settings() {
                   </select>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-1">Webhook Notifications</h4>
+                  <p className="text-xs text-gray-600 font-medium leading-relaxed max-w-md">
+                    Send a notification to Slack/Discord when users are created, updated, deleted, or expired.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-gray-700 text-[10px] font-black uppercase mb-1 ml-1 tracking-widest">
+                    Webhook URL
+                  </label>
+                  <input
+                    type="text"
+                    className="shadow-sm border-2 border-gray-200 rounded-xl w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-4 focus:ring-teal-100 focus:border-teal-500 transition-all font-mono text-sm bg-white"
+                    placeholder="https://hooks.slack.com/services/..."
+                    value={settings.WEBHOOK_URL || ''}
+                    onChange={e => setSettings({ ...settings, WEBHOOK_URL: e.target.value })}
+                  />
+                </div>
+                
+                <div className="pt-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-gray-700 text-xs font-black uppercase tracking-widest">
+                      Use Webhook Proxy
+                    </label>
+                    <label className="relative inline-flex items-center cursor-pointer group">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={!!settings.WEBHOOK_PROXY_URL}
+                        onChange={e => {
+                          if (!e.target.checked) {
+                            setSettings({ ...settings, WEBHOOK_PROXY_URL: '', WEBHOOK_PROXY_USER: '', WEBHOOK_PROXY_PASSWORD: '' })
+                          } else {
+                            setSettings({ ...settings, WEBHOOK_PROXY_URL: 'http://my-proxy:8080' })
+                          }
+                        }}
+                      />
+                      <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-600"></div>
+                    </label>
+                  </div>
+
+                  {!!settings.WEBHOOK_PROXY_URL && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-inner">
+                      <div className="sm:col-span-2">
+                        <label className="block text-gray-500 text-[10px] font-bold uppercase mb-1 ml-1">
+                          Proxy Host/URL (Required)
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          placeholder="http://proxy.internal:3128"
+                          value={settings.WEBHOOK_PROXY_URL}
+                          onChange={e => setSettings({ ...settings, WEBHOOK_PROXY_URL: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 text-[10px] font-bold uppercase mb-1 ml-1">
+                          Proxy Username (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          placeholder="admin"
+                          value={settings.WEBHOOK_PROXY_USER || ''}
+                          onChange={e => setSettings({ ...settings, WEBHOOK_PROXY_USER: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-500 text-[10px] font-bold uppercase mb-1 ml-1">
+                          Proxy Password (Optional)
+                        </label>
+                        <input
+                          type="password"
+                          className="w-full py-2 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          placeholder="Leave blank or enter password"
+                          value={settings.WEBHOOK_PROXY_PASSWORD || ''}
+                          onChange={e => setSettings({ ...settings, WEBHOOK_PROXY_PASSWORD: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-1">GitOps Export</h4>
+                  <p className="text-xs text-gray-600 font-medium leading-relaxed max-w-md">
+                    Download all custom roles, users, and groups as a Kubernetes YAML file for GitOps backup.
+                  </p>
+                </div>
+                <a
+                  href="/api/export-gitops"
+                  download="permission-manager-gitops.yaml"
+                  className="bg-white hover:bg-gray-100 text-gray-800 border-2 border-gray-300 font-black py-2.5 px-6 rounded-xl shadow-sm transition-all transform active:scale-95 text-xs tracking-widest flex items-center justify-center whitespace-nowrap"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                  EXPORT YAML
+                </a>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-100 shadow-sm transition-all hover:border-gray-200">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4">
+                <div>
+                  <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-1">System Protected Namespaces</h4>
+                  <p className="text-xs text-gray-600 font-medium leading-relaxed max-w-md">
+                    Select namespaces that cannot be deleted from the Permission Manager UI.
+                  </p>
+                </div>
+              </div>
+              <NamespaceMultiSelect
+                value={settings.SYSTEM_PROTECTED_NAMESPACES ? settings.SYSTEM_PROTECTED_NAMESPACES.split(',') : []}
+                onSelect={(ns: string[]) => setSettings({ ...settings, SYSTEM_PROTECTED_NAMESPACES: ns.join(',') })}
+                placeholder="Select namespaces to protect..."
+                disabled={false}
+              />
             </div>
 
             <div className="pt-4 flex flex-col sm:flex-row gap-4">

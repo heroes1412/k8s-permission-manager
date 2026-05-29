@@ -51,11 +51,21 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.In
 		e.Use(middleware.CORS())
 	}
 
-	e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		if username == "admin" && password == basicAuthPassword {
-			return true, nil
-		}
-		return false, nil
+	// Add an unauthenticated health check endpoint
+	e.GET("/api/health", func(c echo.Context) error {
+		return c.String(http.StatusOK, "OK")
+	})
+
+	e.Use(middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{
+		Skipper: func(c echo.Context) bool {
+			return c.Path() == "/api/health"
+		},
+		Validator: func(username, password string, c echo.Context) (bool, error) {
+			if username == "admin" && password == basicAuthPassword {
+				return true, nil
+			}
+			return false, nil
+		},
 	}))
 
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
@@ -120,4 +130,9 @@ func addRoutes(e *echo.Echo) {
 	api.GET("/settings", getSettings)
 	api.POST("/settings", updateSettings)
 	api.POST("/restart", restartApp)
+
+	// New Features
+	api.GET("/export-gitops", exportGitOps)
+	api.GET("/access-audit", getAccessAudit)
+	api.POST("/check-permission", checkPermission)
 }

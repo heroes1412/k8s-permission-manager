@@ -55,4 +55,3 @@ COPY --from=builder /app/permission-manager /app/permission-manager
 EXPOSE 4000
 
 ENTRYPOINT ["./permission-manager"]
-

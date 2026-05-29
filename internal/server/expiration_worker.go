@@ -73,9 +73,11 @@ func runExpirationCheck(kubeClient k8sclient.Interface, cfg config.Config) {
 
 				if action == "DELETE" {
 					deleteExpiredUser(rm, u.Name)
+					sendWebhookNotification(rm, "⏰ User `"+u.Name+"` has been deleted due to expiration.")
 				} else {
 					// For KEEP, we just revoke all permissions
 					revokePermissions(rm, u.Name)
+					sendWebhookNotification(rm, "⚠️ User `"+u.Name+"` permissions revoked due to expiration.")
 				}
 				
 				usersProcessed++

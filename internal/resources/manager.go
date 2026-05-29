@@ -25,3 +25,7 @@ func NewManager(kc k8sclient.Interface, ctx context.Context, clusterNamespace st
 		V1Alpha1PermissionManagerGroup: V1Alpha1PermissionManagerGroup{kubeclient: kc, context: ctx},
 	}
 }
+
+func (m *Manager) GetKubeClient() k8sclient.Interface {
+	return m.kubeclient
+}

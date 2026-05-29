@@ -16,7 +16,11 @@ func getSettings(c echo.Context) error {
 
 	settings := make(map[string]string)
 	for k, v := range secret.Data {
-		settings[k] = string(v)
+		if k == "BASIC_AUTH_PASSWORD" || k == "WEBHOOK_PROXY_PASSWORD" {
+			settings[k] = "********" // Mask the password
+		} else {
+			settings[k] = string(v)
+		}
 	}
 
 	return ac.okResponseWithData(settings)
@@ -26,11 +30,16 @@ func updateSettings(c echo.Context) error {
 	ac := c.(*AppContext)
 
 	type Request struct {
-		ClusterName         string `json:"CLUSTER_NAME"`
-		ControlPlaneAddress string `json:"CONTROL_PLANE_ADDRESS"`
-		BasicAuthPassword   string `json:"BASIC_AUTH_PASSWORD"`
-		GroupsEnabled       string `json:"GROUPS_ENABLED"`
-		ExpiredUserAction   string `json:"EXPIRED_USER_ACTION"`
+		ClusterName               string `json:"CLUSTER_NAME"`
+		ControlPlaneAddress       string `json:"CONTROL_PLANE_ADDRESS"`
+		BasicAuthPassword         string `json:"BASIC_AUTH_PASSWORD"`
+		GroupsEnabled             string `json:"GROUPS_ENABLED"`
+		ExpiredUserAction         string `json:"EXPIRED_USER_ACTION"`
+		WebhookURL                string `json:"WEBHOOK_URL"`
+		WebhookProxyURL           string `json:"WEBHOOK_PROXY_URL"`
+		WebhookProxyUser          string `json:"WEBHOOK_PROXY_USER"`
+		WebhookProxyPass          string `json:"WEBHOOK_PROXY_PASSWORD"`
+		SystemProtectedNamespaces string `json:"SYSTEM_PROTECTED_NAMESPACES"`
 	}
 
 	r := new(Request)
@@ -56,9 +65,25 @@ func updateSettings(c echo.Context) error {
 
 	secret.Data["CLUSTER_NAME"] = []byte(r.ClusterName)
 	secret.Data["CONTROL_PLANE_ADDRESS"] = []byte(r.ControlPlaneAddress)
-	secret.Data["BASIC_AUTH_PASSWORD"] = []byte(r.BasicAuthPassword)
+	
+	// Only update the password if a new one was provided
+	if r.BasicAuthPassword != "" && r.BasicAuthPassword != "********" {
+		secret.Data["BASIC_AUTH_PASSWORD"] = []byte(r.BasicAuthPassword)
+	}
+
 	secret.Data["GROUPS_ENABLED"] = []byte(r.GroupsEnabled)
 	secret.Data["EXPIRED_USER_ACTION"] = []byte(r.ExpiredUserAction)
+	secret.Data["WEBHOOK_URL"] = []byte(r.WebhookURL)
+	secret.Data["WEBHOOK_PROXY_URL"] = []byte(r.WebhookProxyURL)
+	secret.Data["WEBHOOK_PROXY_USER"] = []byte(r.WebhookProxyUser)
+	secret.Data["SYSTEM_PROTECTED_NAMESPACES"] = []byte(r.SystemProtectedNamespaces)
+	
+	if r.WebhookProxyPass != "" && r.WebhookProxyPass != "********" {
+		secret.Data["WEBHOOK_PROXY_PASSWORD"] = []byte(r.WebhookProxyPass)
+	} else if r.WebhookProxyPass == "" {
+		// If explicitly cleared in UI, remove it
+		delete(secret.Data, "WEBHOOK_PROXY_PASSWORD")
+	}
 
 	// Update the secret in Kubernetes
 	_, err = ac.ResourceManager.SecretUpdate("permission-manager", secret)

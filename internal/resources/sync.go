@@ -191,21 +191,10 @@ func (r *Manager) syncUserWithNamespaces(username string, namespaces []string) e
 		}
 
 		if isAllNamespaces {
-			if isClusterRole {
-				rbName := fmt.Sprintf("%s___%s-all", username, shortRoleName)
-				_, _ = r.ClusterRoleBindingCreate(rbName, username, roleName, subjects)
-			} else {
-				// Role in all namespaces — use pre-fetched namespace list (Fix #5).
-				for _, ns := range namespaces {
-					rbName := fmt.Sprintf("%s___%s", username, shortRoleName)
-					_, _ = r.RoleBindingCreate(ns, username, RoleBindingRequirements{
-						RoleKind:        "Role",
-						RoleName:        roleName,
-						RolebindingName: rbName,
-						Subjects:        subjects,
-					})
-				}
-			}
+			rbName := fmt.Sprintf("%s___%s-all", username, shortRoleName)
+			// Fix N+1 API DOS: Always use a single ClusterRoleBinding for ALL_NAMESPACES
+			// rather than iterating over all namespaces and creating RoleBindings.
+			_, _ = r.ClusterRoleBindingCreate(rbName, username, roleName, subjects)
 		} else {
 			for _, ns := range res.Namespaces {
 				rbName := fmt.Sprintf("%s___%s", username, shortRoleName)
