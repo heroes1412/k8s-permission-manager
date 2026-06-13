@@ -5,10 +5,10 @@
 replicaCount: 1
 
 image:
-  repository: quay.io/sighup/permission-manager
-  pullPolicy: IfNotPresent
+  repository: h2372/permission-manager
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.9.0"
+  tag: "dev"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -40,9 +40,9 @@ securityContext:
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  port: 80
-  nodePort: null
+  type: NodePort
+  port: 4000
+  nodePort: 28824
 
 # Ingress:
 # - If you want to use a specific ingress controller, just uncomment "kubernetes.io/ingress.class" and type the name of your ingress class.
@@ -67,14 +67,12 @@ ingress:
 # The values already adjusted for a small permission-manager setup. Increase value if needed.
 # It's recommended to use ressource limits, just uncomment and try out. To use autosacling, ressources are required.
 resources:
-  {}
-  # Adjust lines as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 10m
-  #   memory: 80Mi
-  # requests:
-  #   cpu: 10m
-  #   memory: 80Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
 
 autoscaling:
   enabled: false
@@ -100,6 +98,11 @@ config:
 
   # Password for basic auth to access the UI
   basicAuthPassword: ""
+
+  # Features and behavior
+  groupsEnabled: "true"
+  expiredUserAction: "DELETE"
+  systemProtectedNamespaces: "default,kube-system,kube-public,kube-node-lease,permission-manager"
 
   templates:
     - name: operation

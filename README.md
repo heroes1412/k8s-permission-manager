@@ -23,7 +23,9 @@ v5: fix + responsive design
 
 v6: add Access Audit, export gitops resource, web hook, can i
 
-docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v6 .
+v7: RBAC Visualizer, Bulk Operations + fixes
+
+docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v7 .
 
 ## Screenshots
 

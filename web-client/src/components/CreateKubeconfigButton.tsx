@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useState, useMemo} from 'react'
 import {Dialog} from '@reach/dialog'
 import copy from 'copy-to-clipboard'
 import Editor from 'react-simple-code-editor'
@@ -47,7 +47,7 @@ export default function CreateKubeconfigButton({user}: CreateKubeconfigButtonPar
                     new Date().getTime() > new Date(user.createdAt).getTime() + user.maxDays * 24 * 60 * 60 * 1000;
 
   const allAvailableNamespaces = namespaceList.map(ns => ns.metadata.name);
-  const validNamespaces = getValidNamespaces(user, allAvailableNamespaces);
+  const validNamespaces = useMemo(() => getValidNamespaces(user, allAvailableNamespaces), [user, allAvailableNamespaces]);
 
   //b) we generate an array of unique namespaces.
   const [chosenNamespace, setChosenNamespace] = useState<string>(validNamespaces[0]);

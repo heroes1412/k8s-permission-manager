@@ -47,6 +47,10 @@ func updateSettings(c echo.Context) error {
 		return err
 	}
 
+	if r.ClusterName == "" || r.ControlPlaneAddress == "" {
+		return ac.errorResponse("CLUSTER_NAME and CONTROL_PLANE_ADDRESS cannot be empty")
+	}
+
 	secret, err := ac.ResourceManager.SecretGet("permission-manager", "permission-manager")
 	if err != nil {
 		// If secret doesn't exist, create a new one

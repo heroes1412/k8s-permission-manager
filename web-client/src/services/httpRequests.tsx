@@ -26,14 +26,15 @@ class HttpRequests {
 
   constructor(httpClientFactory: () => AxiosInstance) {
 
-    this.httpClient = httpClientFactory();
+    const client = httpClientFactory();
+    this.httpClient = client;
 
     this.rolebindingRequests = {
-      create: new RolebindingCreateRequests(httpClientFactory()),
-      delete: new RolebindingDeleteRequests(httpClientFactory())
+      create: new RolebindingCreateRequests(client),
+      delete: new RolebindingDeleteRequests(client)
     }
 
-    this.userRequests = new UserRequests(httpClientFactory());
+    this.userRequests = new UserRequests(client);
 
 
   }

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -201,6 +202,22 @@ func deleteNamespace(c echo.Context) error {
 
 	if err := ac.validateAndBindRequest(r); err != nil {
 		return err
+	}
+
+	// Check protected namespaces from settings
+	secret, err := ac.ResourceManager.SecretGet("permission-manager", "permission-manager")
+	if err == nil {
+		protectedStr := string(secret.Data["SYSTEM_PROTECTED_NAMESPACES"])
+		if protectedStr == "" {
+			// Fallback to defaults if for some reason settings are missing
+			protectedStr = "default,kube-system,kube-public,kube-node-lease,permission-manager"
+		}
+		protected := strings.Split(protectedStr, ",")
+		for _, p := range protected {
+			if strings.TrimSpace(p) == r.Name {
+				return c.JSON(http.StatusForbidden, Response{Ok: false, ErrorMsg: "Cannot delete system-protected namespace"})
+			}
+		}
 	}
 
 	if err := ac.ResourceManager.NamespaceDelete(r.Name); err != nil {

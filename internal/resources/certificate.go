@@ -2,8 +2,9 @@ package resources
 
 import (
 	"encoding/base64"
-	"io/ioutil"
 	"log"
+	"os"
+
 	runtime "sigs.k8s.io/controller-runtime"
 )
 
@@ -21,7 +22,7 @@ func getCaBase64() string {
 	}
 
 	// CAData len can be 0, so as a fallback we read from CAFile
-	CAData, err := ioutil.ReadFile(kConfig.CAFile)
+	CAData, err := os.ReadFile(kConfig.CAFile)
 	if err != nil {
 		log.Fatalf("Unable to read kubeconfig file.\n%v", err)
 	}

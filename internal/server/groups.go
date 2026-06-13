@@ -38,6 +38,10 @@ func createGroup(c echo.Context) error {
 		return err
 	}
 
+	if len(r.Resources) > 200 {
+		return ac.errorResponse("too many resources. max 200 allowed")
+	}
+
 	if !isValidK8sName(r.Name) {
 		return ac.errorResponse(invalidK8sNameError)
 	}
@@ -73,6 +77,10 @@ func updateGroup(c echo.Context) error {
 
 	if err != nil {
 		return err
+	}
+
+	if len(r.Resources) > 200 {
+		return ac.errorResponse("too many resources. max 200 allowed")
 	}
 
 	group, err := ac.ResourceManager.V1Alpha1PermissionManagerGroup.Get(r.Name)

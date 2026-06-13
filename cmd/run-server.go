@@ -17,7 +17,9 @@ import (
 func main() {
 	cfg := config.New()
 
-	s := server.New(*cfg)
+	kubeClient := resources.NewKubeClient()
+
+	s := server.New(*cfg, kubeClient)
 	addr := ":" + cfg.Backend.Port
 
 	// Fix #3: Set HTTP server timeouts to prevent resource exhaustion from slow/abusive clients.
@@ -42,7 +44,7 @@ func main() {
 
 	// Fix #8: Start background expiration worker to handle auto-deletion
 	workerCtx, workerCancel := context.WithCancel(context.Background())
-	server.StartExpirationWorker(workerCtx, resources.NewKubeClient(), *cfg)
+	server.StartExpirationWorker(workerCtx, kubeClient, *cfg)
 
 	<-quit
 

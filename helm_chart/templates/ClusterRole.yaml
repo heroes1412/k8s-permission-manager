@@ -5,52 +5,27 @@ metadata:
   labels:
     {{- include "permission-manager.labels" . | nindent 4 }}
 rules:
-  # Allow full management of all the Permission Manager resources
-  - apiGroups: [ "permissionmanager.user" ]
-    resources:
-      - "*"
-    verbs: [ "get", "list", "create", "update", "delete", "watch" ]
-  # Allow full management of the RBAC resources
-  - apiGroups:
-      - "rbac.authorization.k8s.io"
-    resources:
-      - "clusterrolebindings"
-      - "clusterroles"
-      - "rolebindings"
-      - "roles"
-    verbs: [ "get", "list", "create", "update", "delete", "bind", "watch" ]
+  # Allow discovery and checking of all resources to avoid escalation errors
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "bind", "escalate"]
+  # Allow full management of RBAC resources
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
+  # Allow full management of core resources
   - apiGroups: [""]
-    resources:
-      - "serviceaccounts"
-      - "secrets"
-    verbs: [ "get", "list", "create", "update", "delete", "watch" ]
-  # Allow full management of certificates CSR, including their approval
-  - apiGroups: [ "certificates.k8s.io" ]
-    resources:
-      - "certificatesigningrequests"
-      - "certificatesigningrequests/approval"
-    verbs: [ "get", "list", "create", "update", "delete", "watch" ]
-  # Support legacy versions, before signerName was added
-  # (see https://github.com/kubernetes/kubernetes/pull/88246)
-  - apiGroups: [ "certificates.k8s.io" ]
-    resources:
-      - "signers"
-    resourceNames:
-      - "kubernetes.io/legacy-unknown"
-      - "kubernetes.io/kube-apiserver-client"
-    verbs: [ "approve" ]
-  # Allow full manage Namespaces
-  - apiGroups: [ "" ]
-    resources:
-      - "namespaces"
-    verbs: [ "get", "list", "create", "delete", "update" ]
-  # Allow to list Pods to verify empty namespaces
-  - apiGroups: [ "" ]
-    resources:
-      - "pods"
-    verbs: [ "get", "list", "watch" ]
+    resources: ["*"]
+    verbs: ["*"]
+  # Allow full management of certificates
+  - apiGroups: ["certificates.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
   # Allow to create subjectaccessreviews for permission testing
-  - apiGroups: [ "authorization.k8s.io" ]
-    resources:
-      - "subjectaccessreviews"
-    verbs: [ "create" ]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+  # Support all other common groups for templates and internal CRDs
+  - apiGroups: ["networking.k8s.io", "apps", "batch", "autoscaling", "gateway.networking.k8s.io", "permissionmanager.user"]
+    resources: ["*"]
+    verbs: ["*"]

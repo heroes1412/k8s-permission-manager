@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"sighupio/permission-manager/internal/config"
@@ -41,7 +42,7 @@ func runExpirationCheck(kubeClient k8sclient.Interface, cfg config.Config) {
 
 	action := "DELETE" // default
 	if val, ok := secret.Data["EXPIRED_USER_ACTION"]; ok {
-		if string(val) == "KEEP" || string(val) == "Keep" {
+		if strings.EqualFold(string(val), "KEEP") {
 			action = "KEEP"
 		}
 	}

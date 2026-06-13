@@ -61,6 +61,22 @@ export default function Settings() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await httpRequests.httpClient.get('/api/export-gitops', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'permission-manager-gitops.yaml');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err: any) {
+      console.error(err);
+      setMessage({ type: 'error', text: 'Failed to download GitOps export.' });
+    }
+  };
+
   const handleRestart = async () => {
     if (!window.confirm("Are you sure you want to restart the application? This will trigger a rollout restart of the Permission Manager deployment.")) return;
     
@@ -276,14 +292,14 @@ export default function Settings() {
                     Download all custom roles, users, and groups as a Kubernetes YAML file for GitOps backup.
                   </p>
                 </div>
-                <a
-                  href="/api/export-gitops"
-                  download="permission-manager-gitops.yaml"
+                <button
+                  type="button"
+                  onClick={handleExport}
                   className="bg-white hover:bg-gray-100 text-gray-800 border-2 border-gray-300 font-black py-2.5 px-6 rounded-xl shadow-sm transition-all transform active:scale-95 text-xs tracking-widest flex items-center justify-center whitespace-nowrap"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                   EXPORT YAML
-                </a>
+                </button>
               </div>
             </div>
 

@@ -1,10 +1,12 @@
 package server
 
 import (
+	"crypto/subtle"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
@@ -16,17 +18,10 @@ import (
 	"sighupio/permission-manager/static"
 )
 
-func New(cfg config.Config) *echo.Echo {
+func New(cfg config.Config, kubeClient k8sclient.Interface) *echo.Echo {
 	e := echo.New()
 
 	e.Validator = &CustomValidator{validator: validator.New()}
-
-	// Fix #1: Create a single shared Kubernetes client for the lifetime of the server.
-	// The previous code called resources.NewKubeClient() inside a per-request middleware,
-	// which allocates a new HTTP transport (with its own TLS dialer, connection pool, and
-	// internal goroutines) for every request and never closes it — a goroutine and file
-	// descriptor leak that compounds over time until OOM or "too many open files".
-	kubeClient := resources.NewKubeClient()
 
 	addMiddlewareStack(e, cfg, kubeClient)
 	addRoutes(e)
@@ -51,6 +46,8 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.In
 		e.Use(middleware.CORS())
 	}
 
+	e.Use(middleware.BodyLimit("2M"))
+
 	// Add an unauthenticated health check endpoint
 	e.GET("/api/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
@@ -61,7 +58,9 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.In
 			return c.Path() == "/api/health"
 		},
 		Validator: func(username, password string, c echo.Context) (bool, error) {
-			if username == "admin" && password == basicAuthPassword {
+			userMatch := subtle.ConstantTimeCompare([]byte(username), []byte("admin"))
+			passMatch := subtle.ConstantTimeCompare([]byte(password), []byte(basicAuthPassword))
+			if userMatch == 1 && passMatch == 1 {
 				return true, nil
 			}
 			return false, nil
@@ -77,12 +76,27 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.In
 		log.Fatal(err)
 	}
 
-	e.Group("/*", middleware.StaticWithConfig(middleware.StaticConfig{
+	e.Group("/*", func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			path := c.Request().URL.Path
+			// Cache assets that have content hashes (JS/CSS) or static images
+			if strings.HasSuffix(path, ".js") ||
+				strings.HasSuffix(path, ".css") ||
+				strings.HasSuffix(path, ".png") ||
+				strings.HasSuffix(path, ".svg") ||
+				strings.HasSuffix(path, ".ico") {
+				c.Response().Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			} else {
+				// Prevent caching of index.html to ensure users always get the latest version
+				c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			}
+			return next(c)
+		}
+	}, middleware.StaticWithConfig(middleware.StaticConfig{
 		Root:       ".",
 		Filesystem: http.FS(fsys),
 		HTML5:      true,
 	}))
-
 	// Fix #1 (continued): NewManager is a cheap struct wrapper — safe to create per-request.
 	// Only the underlying KubeClient (kubeClient) is shared and reused.
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -99,6 +113,9 @@ func addMiddlewareStack(e *echo.Echo, cfg config.Config, kubeClient k8sclient.In
 
 func addRoutes(e *echo.Echo) {
 	api := e.Group("/api")
+
+	// Add a global rate limiter for API endpoints
+	api.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20)))
 
 	api.GET("/list-users", listUsers)
 	api.GET("/list-groups", listGroups)

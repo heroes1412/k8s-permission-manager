@@ -51,7 +51,8 @@ export default function EditUser({ user }: EditUserParameters) {
 
       await httpRequests.userRequests.update(username, newTotalMaxDays, groups, user.resources || [])
       if (reloadAfterSubmit) {
-        window.location.reload()
+        await refreshUsers()
+        history.push('/')
       }
     } catch (err: any) {
       console.error(err)

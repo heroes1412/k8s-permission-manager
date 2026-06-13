@@ -20,6 +20,10 @@ func createClusterRole(c echo.Context) error {
 		return err
 	}
 
+	if len(r.Rules) > 100 {
+		return ac.errorResponse("too many rules. max 100 allowed")
+	}
+
 	_, err = ac.ResourceManager.ClusterRoleCreate(r.RoleName, r.Rules)
 
 	if err != nil {
@@ -42,6 +46,10 @@ func updateClusterRole(c echo.Context) error {
 
 	if err != nil {
 		return err
+	}
+
+	if len(r.Rules) > 100 {
+		return ac.errorResponse("too many rules. max 100 allowed")
 	}
 
 	_, err = ac.ResourceManager.ClusterRoleUpdate(r.RoleName, r.Rules)

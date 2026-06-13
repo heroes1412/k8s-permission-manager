@@ -1,8 +1,10 @@
 package server
 
 import (
-	"github.com/labstack/echo/v4"
+	"log"
 	"net/http"
+
+	"github.com/labstack/echo/v4"
 	"sighupio/permission-manager/internal/config"
 	"sighupio/permission-manager/internal/resources"
 )
@@ -47,6 +49,7 @@ func (c *AppContext) okResponseWithData(response interface{}) error {
 }
 
 func (c *AppContext) errorResponse(error string) error {
+	log.Printf("API Error: %s", error)
 	return c.JSON(http.StatusBadRequest, ErrorRes{error})
 
 }

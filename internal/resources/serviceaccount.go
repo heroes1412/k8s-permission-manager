@@ -114,6 +114,11 @@ func (r *Manager) ServiceAccountCreateKubeConfigForUser(cluster config.ClusterCo
 	}
 	/****  handle service account's end ****/
 
+	if accountSecret == nil || accountSecret.Data == nil || accountSecret.Data["ca.crt"] == nil || len(accountSecret.Data["token"]) == 0 {
+		log.Printf("Kubeconfig error: secret data for user %s was not populated in time", username)
+		return ""
+	}
+
 	certificateTpl := `---
 apiVersion: v1
 kind: Config

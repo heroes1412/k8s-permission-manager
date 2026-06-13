@@ -6,8 +6,10 @@ import { useNamespaceList } from '../hooks/useNamespaceList'
 interface AuditRecord {
   subjectKind: string
   subjectName: string
+  subjectNamespace?: string
   roleName: string
   managedBy: string
+  isManaged: boolean
 }
 
 export default function AccessAudit() {
@@ -30,7 +32,12 @@ export default function AccessAudit() {
       setError(null)
       try {
         const { data } = await httpRequests.httpClient.get(`/api/access-audit?namespace=${selectedNamespace}`)
-        setRecords(data || [])
+        // Sort: Managed by App first, then External
+        const sortedData = (data || []).sort((a: AuditRecord, b: AuditRecord) => {
+          if (a.isManaged === b.isManaged) return 0;
+          return a.isManaged ? -1 : 1;
+        });
+        setRecords(sortedData)
       } catch (err: any) {
         setError(err?.response?.data?.message || err.message)
       } finally {
@@ -70,7 +77,7 @@ export default function AccessAudit() {
             </div>
           )}
 
-          <div className="mb-4 flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+          <div className="mb-4 flex flex-wrap items-center gap-6 text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
              <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-teal-500"></div>
                 <span>Managed by App</span>
@@ -85,16 +92,17 @@ export default function AccessAudit() {
             <table className="text-left w-full border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100">
-                  <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Subject Kind</th>
+                  <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Subject</th>
                   <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Identity Name</th>
-                  <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Assigned Role/ClusterRole</th>
+                  <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Namespace</th>
+                  <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Assigned Role</th>
                   <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">Source Policy</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 {records.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-12 text-center text-gray-400 italic font-medium text-base">
+                    <td colSpan={5} className="py-12 text-center text-gray-400 italic font-medium text-base">
                       No RBAC bindings found for this namespace.
                     </td>
                   </tr>
@@ -105,22 +113,24 @@ export default function AccessAudit() {
                         <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${
                             r.subjectKind === 'User' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 
                             r.subjectKind === 'Group' ? 'bg-purple-50 text-purple-600 border border-purple-100' : 
+                            r.subjectKind === 'ServiceAccount' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
                             'bg-gray-100 text-gray-600 border border-gray-200'
                         }`}>
                           {r.subjectKind}
                         </span>
                       </td>
                       <td className="py-4 px-6 font-bold text-gray-800 font-mono text-xs">{r.subjectName}</td>
+                      <td className="py-4 px-6 text-gray-500 font-mono text-xs italic">{r.subjectNamespace || '-'}</td>
                       <td className="py-4 px-6 text-gray-700 font-bold">
                         <div className="flex flex-col">
                             <span className="text-sm tracking-tight">{r.roleName.replace('template-namespaced-resources___', '').replace('template-cluster-resources___', '')}</span>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border-2 ${
-                            r.managedBy === 'PermissionManager' 
-                            ? 'bg-teal-50 text-teal-600 border-teal-100' 
-                            : 'bg-orange-50 text-orange-600 border-orange-100'
+                        <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-normal border ${
+                            r.isManaged 
+                            ? 'bg-teal-50 text-teal-700 border-teal-200' 
+                            : 'bg-orange-50 text-orange-700 border-orange-200'
                         }`}>
                           {r.managedBy}
                         </span>

@@ -21,7 +21,9 @@ func exportGitOps(c echo.Context) error {
 
 	// Export Users
 	users, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.List()
-	if err == nil {
+	if err != nil {
+		output.WriteString(fmt.Sprintf("# WARNING: Failed to export users: %v\n", err))
+	} else {
 		for _, u := range users {
 			obj := map[string]interface{}{
 				"apiVersion": "permissionmanager.user/v1alpha1",
@@ -43,7 +45,9 @@ func exportGitOps(c echo.Context) error {
 
 	// Export Groups
 	groups, err := ac.ResourceManager.V1Alpha1PermissionManagerGroup.List()
-	if err == nil {
+	if err != nil {
+		output.WriteString(fmt.Sprintf("# WARNING: Failed to export groups: %v\n", err))
+	} else {
 		for _, g := range groups {
 			obj := map[string]interface{}{
 				"apiVersion": "permissionmanager.group/v1alpha1",
@@ -63,7 +67,9 @@ func exportGitOps(c echo.Context) error {
 
 	// Export Role Templates
 	roles, err := ac.ResourceManager.ClusterRoleList()
-	if err == nil {
+	if err != nil {
+		output.WriteString(fmt.Sprintf("# WARNING: Failed to export role templates: %v\n", err))
+	} else {
 		for _, r := range roles.Items {
 			if strings.HasPrefix(r.Name, "template-namespaced-resources___") || strings.HasPrefix(r.Name, "template-cluster-resources___") {
 				obj := map[string]interface{}{
@@ -95,10 +101,12 @@ func getAccessAudit(c echo.Context) error {
 	}
 
 	type AuditRecord struct {
-		SubjectKind string `json:"subjectKind"`
-		SubjectName string `json:"subjectName"`
-		RoleName    string `json:"roleName"`
-		ManagedBy   string `json:"managedBy"` // "PermissionManager" or "Manual/External"
+		SubjectKind      string `json:"subjectKind"`
+		SubjectName      string `json:"subjectName"`
+		SubjectNamespace string `json:"subjectNamespace,omitempty"`
+		RoleName         string `json:"roleName"`
+		ManagedBy        string `json:"managedBy"` // Detailed source info
+		IsManaged        bool   `json:"isManaged"`
 	}
 	records := make([]AuditRecord, 0)
 
@@ -107,20 +115,25 @@ func getAccessAudit(c echo.Context) error {
 	if err == nil {
 		for _, rb := range rbs.Items {
 			managedBy := "Manual/External"
+			isManaged := false
 			if rb.Labels != nil {
-				if _, ok := rb.Labels["generated_for_user"]; ok {
-					managedBy = "PermissionManager"
-				} else if _, ok := rb.Labels["generated_for_group"]; ok {
-					managedBy = "PermissionManager"
+				if val, ok := rb.Labels["generated_for_user"]; ok {
+					managedBy = "User: " + val
+					isManaged = true
+				} else if val, ok := rb.Labels["generated_for_group"]; ok {
+					managedBy = "Group: " + val
+					isManaged = true
 				}
 			}
 
 			for _, sub := range rb.Subjects {
 				records = append(records, AuditRecord{
-					SubjectKind: sub.Kind,
-					SubjectName: sub.Name,
-					RoleName:    getShortTemplateName(rb.RoleRef.Name),
-					ManagedBy:   managedBy,
+					SubjectKind:      sub.Kind,
+					SubjectName:      sub.Name,
+					SubjectNamespace: sub.Namespace,
+					RoleName:         getShortTemplateName(rb.RoleRef.Name),
+					ManagedBy:        managedBy,
+					IsManaged:        isManaged,
 				})
 			}
 		}
@@ -131,20 +144,51 @@ func getAccessAudit(c echo.Context) error {
 	if err == nil {
 		for _, crb := range crbs.Items {
 			managedBy := "Manual/External"
+			isManaged := false
+			
+			// Detect PM management from labels
 			if crb.Labels != nil {
-				if _, ok := crb.Labels["generated_for_user"]; ok {
-					managedBy = "PermissionManager"
-				} else if _, ok := crb.Labels["generated_for_group"]; ok {
-					managedBy = "PermissionManager"
+				if val, ok := crb.Labels["generated_for_user"]; ok {
+					managedBy = "User: " + val
+					isManaged = true
+				} else if val, ok := crb.Labels["generated_for_group"]; ok {
+					managedBy = "Group: " + val
+					isManaged = true
 				}
+			}
+
+			// Filter: For ClusterRoleBindings, only show them if:
+			// 1. They are managed by Permission Manager
+			// 2. OR they target a ServiceAccount in our namespace
+			// 3. OR they target a "User" or "Group" kind (likely human)
+			// This hides the hundreds of internal K8s system bindings.
+			
+			relevant := isManaged
+			if !relevant {
+				for _, sub := range crb.Subjects {
+					if sub.Namespace == ac.Config.Cluster.Namespace {
+						relevant = true
+						break
+					}
+					if sub.Kind == "User" || sub.Kind == "Group" {
+						relevant = true
+						break
+					}
+				}
+			}
+
+			if !relevant {
+				continue
 			}
 
 			for _, sub := range crb.Subjects {
 				records = append(records, AuditRecord{
-					SubjectKind: sub.Kind,
-					SubjectName: sub.Name,
-					RoleName:    getShortTemplateName(crb.RoleRef.Name) + " (Cluster-wide)",
-					ManagedBy:   managedBy,
+					SubjectKind:      sub.Kind,
+					SubjectName:      sub.Name,
+					SubjectNamespace: sub.Namespace,
+					RoleName:         getShortTemplateName(crb.RoleRef.Name) + " (Cluster-wide)",
+					ManagedBy:        managedBy,
+					IsManaged:        isManaged,
 				})
 			}
 		}

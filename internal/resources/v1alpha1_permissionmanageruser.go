@@ -32,7 +32,7 @@ func (r *V1Alpha1PermissionManagerUser) List() ([]User, error) {
 	//noinspection GoPreferNilSlice
 	users := []User{}
 
-	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.ResourceURL).DoRaw(r.context)
+	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.ResourceURL).SetHeader("Accept", "application/json").DoRaw(r.context)
 
 	if err != nil {
 		log.Print("Failed to get users from k8s CRUD api", err)
@@ -142,7 +142,7 @@ func (r *V1Alpha1PermissionManagerUser) Create(username string, maxDays int, gro
 func (r *V1Alpha1PermissionManagerUser) Get(username string) (v1alpha1.PermissionManagerUser, error) {
 	metadataName := v1alpha1.ResourcePrefix + username
 
-	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.ResourceURL + "/" + metadataName).DoRaw(r.context)
+	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.ResourceURL + "/" + metadataName).SetHeader("Accept", "application/json").DoRaw(r.context)
 
 	if err != nil {
 		log.Printf("Failed to get PermissionManagerUser:%s\n %v\n", username, err)
@@ -169,7 +169,7 @@ func (r *V1Alpha1PermissionManagerUser) Update(user v1alpha1.PermissionManagerUs
 		return User{}, err
 	}
 
-	_, err = r.kubeclient.Discovery().RESTClient().Put().AbsPath(v1alpha1.ResourceURL + "/" + user.Metadata.Name).Body(jsonPayload).DoRaw(r.context)
+	_, err = r.kubeclient.Discovery().RESTClient().Put().AbsPath(v1alpha1.ResourceURL + "/" + user.Metadata.Name).SetHeader("Content-Type", "application/json").SetHeader("Accept", "application/json").Body(jsonPayload).DoRaw(r.context)
 
 	if err != nil {
 		log.Printf("Failed to update PermissionManagerUser:%s\n %v\n", user.Spec.Name, err)

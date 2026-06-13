@@ -25,7 +25,7 @@ type Group struct {
 func (r *V1Alpha1PermissionManagerGroup) List() ([]Group, error) {
 	groups := []Group{}
 
-	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.GroupResourceURL).DoRaw(r.context)
+	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.GroupResourceURL).SetHeader("Accept", "application/json").DoRaw(r.context)
 
 	if err != nil {
 		log.Print("Failed to get groups from k8s CRUD api", err)
@@ -82,7 +82,7 @@ func (r *V1Alpha1PermissionManagerGroup) Create(groupname string, resources []v1
 		return Group{}, err
 	}
 
-	_, err = r.kubeclient.Discovery().RESTClient().Post().AbsPath(v1alpha1.GroupResourceURL).Body(jsonPayload).DoRaw(r.context)
+	_, err = r.kubeclient.Discovery().RESTClient().Post().AbsPath(v1alpha1.GroupResourceURL).SetHeader("Content-Type", "application/json").SetHeader("Accept", "application/json").Body(jsonPayload).DoRaw(r.context)
 
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "already exists") {
@@ -97,7 +97,7 @@ func (r *V1Alpha1PermissionManagerGroup) Create(groupname string, resources []v1
 func (r *V1Alpha1PermissionManagerGroup) Get(groupname string) (v1alpha1.PermissionManagerGroup, error) {
 	metadataName := v1alpha1.GroupPrefix + groupname
 
-	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.GroupResourceURL + "/" + metadataName).DoRaw(r.context)
+	rawResponse, err := r.kubeclient.Discovery().RESTClient().Get().AbsPath(v1alpha1.GroupResourceURL + "/" + metadataName).SetHeader("Accept", "application/json").DoRaw(r.context)
 
 	if err != nil {
 		return v1alpha1.PermissionManagerGroup{}, err
