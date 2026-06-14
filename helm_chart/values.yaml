@@ -28,16 +28,13 @@ podAnnotations: {}
 podSecurityContext:
   fsGroup: 2000
 
-# Default values should not be used currently. It will result in a startup-error.
-# TODO: correct default values should be placed here.
 securityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  runAsNonRoot: true
+  runAsUser: 65532
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 service:
   type: NodePort

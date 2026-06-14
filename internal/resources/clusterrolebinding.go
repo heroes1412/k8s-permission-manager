@@ -1,6 +1,8 @@
 package resources
 
 import (
+	"log"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -84,7 +86,9 @@ func (r *Manager) ClusterRoleBindingDeleteAllForUser(username string) error {
 		return err
 	}
 	for _, crb := range crbs.Items {
-		_ = r.ClusterRoleBindingDelete(crb.Name)
+		if err := r.ClusterRoleBindingDelete(crb.Name); err != nil {
+			log.Printf("failed to delete cluster role binding %s: %v", crb.Name, err)
+		}
 	}
 	return nil
 }
@@ -101,7 +105,9 @@ func (r *Manager) ClusterRoleBindingDeleteAllForGroup(groupname string) error {
 		return err
 	}
 	for _, crb := range crbs.Items {
-		_ = r.ClusterRoleBindingDelete(crb.Name)
+		if err := r.ClusterRoleBindingDelete(crb.Name); err != nil {
+			log.Printf("failed to delete cluster role binding %s: %v", crb.Name, err)
+		}
 	}
 	return nil
 }

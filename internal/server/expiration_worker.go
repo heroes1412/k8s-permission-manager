@@ -23,16 +23,16 @@ func StartExpirationWorker(ctx context.Context, kubeClient k8sclient.Interface, 
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				runExpirationCheck(kubeClient, cfg)
+				runExpirationCheck(ctx, kubeClient, cfg)
 			}
 		}
 	}()
 	// Run once on startup
-	go runExpirationCheck(kubeClient, cfg)
+	go runExpirationCheck(ctx, kubeClient, cfg)
 }
 
-func runExpirationCheck(kubeClient k8sclient.Interface, cfg config.Config) {
-	rm := resources.NewManager(kubeClient, context.Background(), cfg.Cluster.Namespace)
+func runExpirationCheck(ctx context.Context, kubeClient k8sclient.Interface, cfg config.Config) {
+	rm := resources.NewManager(kubeClient, ctx, cfg.Cluster.Namespace)
 
 	// Check setting
 	secret, err := rm.SecretGet("permission-manager", "permission-manager")
@@ -82,7 +82,11 @@ func runExpirationCheck(kubeClient k8sclient.Interface, cfg config.Config) {
 				}
 				
 				usersProcessed++
-				time.Sleep(200 * time.Millisecond)
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(200 * time.Millisecond):
+				}
 			}
 		}
 	}
@@ -94,7 +98,11 @@ func runExpirationCheck(kubeClient k8sclient.Interface, cfg config.Config) {
 			if err := rm.SyncGroup(g); err != nil {
 				log.Printf("Failed to sync group %s during expiration: %v", g, err)
 			}
-			time.Sleep(200 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(200 * time.Millisecond):
+			}
 		}
 	}
 }

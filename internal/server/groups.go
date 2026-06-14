@@ -41,6 +41,11 @@ func createGroup(c echo.Context) error {
 	if len(r.Resources) > 200 {
 		return ac.errorResponse("too many resources. max 200 allowed")
 	}
+	for _, res := range r.Resources {
+		if len(res.Namespaces) > 100 {
+			return ac.errorResponse("too many namespaces per resource. max 100 allowed")
+		}
+	}
 
 	if !isValidK8sName(r.Name) {
 		return ac.errorResponse(invalidK8sNameError)
@@ -81,6 +86,11 @@ func updateGroup(c echo.Context) error {
 
 	if len(r.Resources) > 200 {
 		return ac.errorResponse("too many resources. max 200 allowed")
+	}
+	for _, res := range r.Resources {
+		if len(res.Namespaces) > 100 {
+			return ac.errorResponse("too many namespaces per resource. max 100 allowed")
+		}
 	}
 
 	group, err := ac.ResourceManager.V1Alpha1PermissionManagerGroup.Get(r.Name)

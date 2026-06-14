@@ -9,11 +9,11 @@ func createClusterRolebinding(c echo.Context) error {
 	ac := c.(*AppContext)
 
 	type Request struct {
-		ClusterRolebindingName string           `json:"clusterRolebindingName"`
+		ClusterRolebindingName string           `json:"clusterRolebindingName" validate:"required"`
 		Username               string           `json:"generated_for_user"`
 		GroupName              string           `json:"generated_for_group"`
 		Subjects               []rbacv1.Subject `json:"subjects"`
-		RoleName               string           `json:"roleName"`
+		RoleName               string           `json:"roleName" validate:"required"`
 	}
 	r := new(Request)
 
@@ -61,7 +61,7 @@ func deleteClusterRolebinding(c echo.Context) error {
 	ac := c.(*AppContext)
 
 	type Request struct {
-		RolebindingName string `json:"rolebindingName"`
+		RolebindingName string `json:"rolebindingName" validate:"required"`
 	}
 
 	r := new(Request)

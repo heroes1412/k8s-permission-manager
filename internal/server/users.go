@@ -50,6 +50,11 @@ func createUser(c echo.Context) error {
 	if len(r.Resources) > 200 {
 		return ac.errorResponse("too many resources. max 200 allowed")
 	}
+	for _, res := range r.Resources {
+		if len(res.Namespaces) > 100 {
+			return ac.errorResponse("too many namespaces per resource. max 100 allowed")
+		}
+	}
 
 	if r.Groups == nil {
 		r.Groups = make([]string, 0)
@@ -96,6 +101,11 @@ func updateUser(c echo.Context) error {
 	}
 	if len(r.Resources) > 200 {
 		return ac.errorResponse("too many resources. max 200 allowed")
+	}
+	for _, res := range r.Resources {
+		if len(res.Namespaces) > 100 {
+			return ac.errorResponse("too many namespaces per resource. max 100 allowed")
+		}
 	}
 
 	user, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.Get(r.Name)
@@ -162,8 +172,11 @@ func deleteUser(c echo.Context) error {
 		return err
 	}
 
-	// We must get the user to know which groups to sync
-	user, err := ac.ResourceManager.V1Alpha1PermissionManagerUser.Get(r.Username)
+	// Fetch the user first so we know which groups to sync after deletion.
+	user, getUserErr := ac.ResourceManager.V1Alpha1PermissionManagerUser.Get(r.Username)
+	if getUserErr != nil {
+		return ac.errorResponse("user not found: " + getUserErr.Error())
+	}
 
 	// Clean up user's bindings
 	if err := ac.ResourceManager.RoleBindingDeleteAllForUser(r.Username); err != nil {
@@ -173,18 +186,14 @@ func deleteUser(c echo.Context) error {
 		log.Printf("Failed to delete cluster role bindings for user %s: %v", r.Username, err)
 	}
 
-	err = ac.ResourceManager.V1Alpha1PermissionManagerUser.Delete(r.Username)
-
-	if err != nil {
+	if err := ac.ResourceManager.V1Alpha1PermissionManagerUser.Delete(r.Username); err != nil {
 		return ac.errorResponse(err.Error())
 	}
 
-	// Sync groups after user deletion
-	if user.Spec.Groups != nil {
-		for _, g := range user.Spec.Groups {
-			if err := ac.ResourceManager.SyncGroup(g); err != nil {
-				log.Printf("Failed to sync group %s: %v", g, err)
-			}
+	// Sync groups after user deletion so they no longer include this user.
+	for _, g := range user.Spec.Groups {
+		if err := ac.ResourceManager.SyncGroup(g); err != nil {
+			log.Printf("Failed to sync group %s: %v", g, err)
 		}
 	}
 

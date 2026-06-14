@@ -105,7 +105,8 @@ func getAccessAudit(c echo.Context) error {
 		SubjectName      string `json:"subjectName"`
 		SubjectNamespace string `json:"subjectNamespace,omitempty"`
 		RoleName         string `json:"roleName"`
-		ManagedBy        string `json:"managedBy"` // Detailed source info
+		RoleRefName      string `json:"roleRefName"` // Full K8s ClusterRole name for direct lookup
+		ManagedBy        string `json:"managedBy"`   // Detailed source info
 		IsManaged        bool   `json:"isManaged"`
 	}
 	records := make([]AuditRecord, 0)
@@ -132,6 +133,7 @@ func getAccessAudit(c echo.Context) error {
 					SubjectName:      sub.Name,
 					SubjectNamespace: sub.Namespace,
 					RoleName:         getShortTemplateName(rb.RoleRef.Name),
+					RoleRefName:      rb.RoleRef.Name,
 					ManagedBy:        managedBy,
 					IsManaged:        isManaged,
 				})
@@ -187,6 +189,7 @@ func getAccessAudit(c echo.Context) error {
 					SubjectName:      sub.Name,
 					SubjectNamespace: sub.Namespace,
 					RoleName:         getShortTemplateName(crb.RoleRef.Name) + " (Cluster-wide)",
+					RoleRefName:      crb.RoleRef.Name,
 					ManagedBy:        managedBy,
 					IsManaged:        isManaged,
 				})
@@ -198,12 +201,6 @@ func getAccessAudit(c echo.Context) error {
 }
 
 func getShortTemplateName(fullName string) string {
-	// Be more aggressive: split by ___ and take the last part if it exists
-	if strings.Contains(fullName, "___") {
-		parts := strings.Split(fullName, "___")
-		return parts[len(parts)-1]
-	}
-	// Fallback to old behavior
 	name := strings.ReplaceAll(fullName, "template-namespaced-resources___", "")
 	name = strings.ReplaceAll(name, "template-cluster-resources___", "")
 	return name

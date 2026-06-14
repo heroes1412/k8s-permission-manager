@@ -19,8 +19,8 @@ export default function NewUserWizard() {
   const { users } = useUsers()
 
   const validateUsername = useCallback(() => {
-    if (username.length < 1 || username.length > 32) {
-      setUsernameError('Required to be between 1 and 32 characters long')
+    if (username.length < 1 || username.length > 63) {
+      setUsernameError('Required to be between 1 and 63 characters long')
       return false
     }
 
@@ -107,7 +107,7 @@ export default function NewUserWizard() {
                     setFormTouched(true)
                   }
                   const filtered = e.target.value.toLowerCase().replace(/[^a-z0-9-@.]/g, '');
-                  setUsername(filtered.slice(0, 32))
+                  setUsername(filtered.slice(0, 63))
                 }}
               />
               {usernameError && formTouched && (

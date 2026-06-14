@@ -146,6 +146,8 @@ export class RolebindingCreateRequests {
      * templates already sent to the backend
      */
     const consumed: string[] = []
+    // The backend always overrides subject.namespace with its own NAMESPACE env value,
+    // so the value here is a placeholder that will be corrected server-side.
     const subjects: Subject[] = [
       {
         kind: 'ServiceAccount',

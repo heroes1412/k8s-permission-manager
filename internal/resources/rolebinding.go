@@ -1,6 +1,8 @@
 package resources
 
 import (
+	"log"
+
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,7 +105,9 @@ func (r *Manager) roleBindingDeleteAllForUserInNamespaces(username string, names
 			continue
 		}
 		for _, rb := range rbs.Items {
-			_ = r.RoleBindingDelete(ns, rb.Name)
+			if err := r.RoleBindingDelete(ns, rb.Name); err != nil {
+				log.Printf("failed to delete role binding %s in namespace %s: %v", rb.Name, ns, err)
+			}
 		}
 	}
 	return nil
@@ -133,7 +137,9 @@ func (r *Manager) roleBindingDeleteAllForGroupInNamespaces(groupname string, nam
 			continue
 		}
 		for _, rb := range rbs.Items {
-			_ = r.RoleBindingDelete(ns, rb.Name)
+			if err := r.RoleBindingDelete(ns, rb.Name); err != nil {
+				log.Printf("failed to delete role binding %s in namespace %s: %v", rb.Name, ns, err)
+			}
 		}
 	}
 	return nil

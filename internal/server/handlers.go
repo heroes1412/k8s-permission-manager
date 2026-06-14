@@ -159,6 +159,13 @@ func createKubeconfig(c echo.Context) error {
 
 	kubeCfg := ac.ResourceManager.ServiceAccountCreateKubeConfigForUser(ac.Config.Cluster, r.Username, r.Namespace)
 
+	if kubeCfg == "" {
+		return c.JSON(http.StatusInternalServerError, Response{
+			Ok:    false,
+			Error: "failed to generate kubeconfig: service account token was not populated in time",
+		})
+	}
+
 	return c.JSON(http.StatusOK, Response{Ok: true, Kubeconfig: kubeCfg})
 }
 
@@ -204,19 +211,20 @@ func deleteNamespace(c echo.Context) error {
 		return err
 	}
 
-	// Check protected namespaces from settings
+	// Check protected namespaces from settings. If the secret cannot be read we
+	// refuse the delete: it is safer to block than to skip the protection check.
 	secret, err := ac.ResourceManager.SecretGet("permission-manager", "permission-manager")
-	if err == nil {
-		protectedStr := string(secret.Data["SYSTEM_PROTECTED_NAMESPACES"])
-		if protectedStr == "" {
-			// Fallback to defaults if for some reason settings are missing
-			protectedStr = "default,kube-system,kube-public,kube-node-lease,permission-manager"
-		}
-		protected := strings.Split(protectedStr, ",")
-		for _, p := range protected {
-			if strings.TrimSpace(p) == r.Name {
-				return c.JSON(http.StatusForbidden, Response{Ok: false, ErrorMsg: "Cannot delete system-protected namespace"})
-			}
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, Response{Ok: false, ErrorMsg: "cannot verify protected namespaces: " + err.Error()})
+	}
+
+	protectedStr := string(secret.Data["SYSTEM_PROTECTED_NAMESPACES"])
+	if protectedStr == "" {
+		protectedStr = "default,kube-system,kube-public,kube-node-lease,permission-manager"
+	}
+	for _, p := range strings.Split(protectedStr, ",") {
+		if strings.TrimSpace(p) == r.Name {
+			return c.JSON(http.StatusForbidden, Response{Ok: false, ErrorMsg: "Cannot delete system-protected namespace"})
 		}
 	}
 

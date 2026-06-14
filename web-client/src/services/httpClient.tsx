@@ -12,12 +12,13 @@ export function httpClientFactory(): AxiosInstance {
     baseURL: process.env.REACT_APP_BACKEND_URL ?? ""
   })
 
-  /**
-   * if a BASIC_AUTH_PASSWORD is passed we inject it into {httpClient}
-   */
+  // WARNING: REACT_APP_BASIC_AUTH_PASSWORD is baked into the JS bundle at build time
+  // and is visible to anyone who downloads the page. Use this ONLY for local development.
+  // In production the browser handles credentials via the Basic Auth dialog — do NOT
+  // set this env variable in a production build or CI pipeline.
   if (process.env.REACT_APP_BASIC_AUTH_PASSWORD) {
     httpClient.defaults.auth = {
-      username: "admin", // username is always admin
+      username: "admin",
       password: process.env.REACT_APP_BASIC_AUTH_PASSWORD
     }
   }

@@ -1,15 +1,26 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { httpRequests } from '../services/httpRequests'
 import { FullScreenLoader } from '../components/Loader'
 import { useNamespaceList } from '../hooks/useNamespaceList'
+import { useRbac } from '../hooks/useRbac'
+import { templateNamespacedResourceRolePrefix, templateClusterResourceRolePrefix } from '../constants'
 
 interface AuditRecord {
   subjectKind: string
   subjectName: string
   subjectNamespace?: string
   roleName: string
+  roleRefName?: string
   managedBy: string
   isManaged: boolean
+}
+
+interface TooltipState {
+  x: number
+  y: number
+  roleName: string
+  roleRefName?: string
 }
 
 export default function AccessAudit() {
@@ -18,6 +29,55 @@ export default function AccessAudit() {
   const [records, setRecords] = useState<AuditRecord[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+
+  const { clusterRoles } = useRbac()
+
+  // Look up the ClusterRole object: prefer exact match by roleRefName, fall back to prefix reconstruction
+  const getFullRoleName = (roleRefName?: string, roleName?: string) => {
+    if (roleRefName && clusterRoles) {
+      const direct = clusterRoles.find(cr => cr.metadata.name === roleRefName)
+      if (direct) return direct
+    }
+    // Fallback: reconstruct from display name (strips " (Cluster-wide)" suffix first)
+    const shortName = (roleName || '').replace(' (Cluster-wide)', '')
+    if (!shortName) return null
+    return clusterRoles?.find(cr =>
+      cr.metadata.name === templateNamespacedResourceRolePrefix + shortName ||
+      cr.metadata.name === templateClusterResourceRolePrefix + shortName
+    ) ?? null
+  }
+
+  const getRolePerms = (roleRefName?: string, roleName?: string) => {
+    const role = getFullRoleName(roleRefName, roleName)
+    if (!role?.rules) return {}
+    const perms: Record<string, { read: boolean; write: boolean }> = {}
+    role.rules.forEach(rule => {
+      const isRead = rule.verbs.includes('*') || rule.verbs.some(v => ['get', 'list', 'watch'].includes(v))
+      const isWrite = rule.verbs.includes('*') || rule.verbs.some(v => ['create', 'update', 'patch', 'delete'].includes(v))
+      rule.resources.forEach(res => {
+        if (!perms[res]) perms[res] = { read: false, write: false }
+        if (isRead) perms[res].read = true
+        if (isWrite) perms[res].write = true
+      })
+    })
+    return perms
+  }
+
+  // Only namespaced template roles have an edit page in /roles
+  const isClickableRole = (r: AuditRecord) =>
+    r.isManaged &&
+    !r.roleName.endsWith(' (Cluster-wide)') &&
+    (r.roleRefName
+      ? r.roleRefName.startsWith(templateNamespacedResourceRolePrefix)
+      : true)
+
+  const getEditPath = (r: AuditRecord) => {
+    const shortName = r.roleRefName
+      ? r.roleRefName.replace(templateNamespacedResourceRolePrefix, '')
+      : r.roleName
+    return `/roles?edit=${encodeURIComponent(shortName)}`
+  }
 
   useEffect(() => {
     if (namespaceList.length > 0 && !selectedNamespace) {
@@ -31,7 +91,7 @@ export default function AccessAudit() {
       setIsLoading(true)
       setError(null)
       try {
-        const { data } = await httpRequests.httpClient.get(`/api/access-audit?namespace=${selectedNamespace}`)
+        const { data } = await httpRequests.httpClient.get('/api/access-audit', { params: { namespace: selectedNamespace } })
         // Sort: Managed by App first, then External
         const sortedData = (data || []).sort((a: AuditRecord, b: AuditRecord) => {
           if (a.isManaged === b.isManaged) return 0;
@@ -122,9 +182,36 @@ export default function AccessAudit() {
                       <td className="py-4 px-6 font-bold text-gray-800 font-mono text-xs">{r.subjectName}</td>
                       <td className="py-4 px-6 text-gray-500 font-mono text-xs italic">{r.subjectNamespace || '-'}</td>
                       <td className="py-4 px-6 text-gray-700 font-bold">
-                        <div className="flex flex-col">
-                            <span className="text-sm tracking-tight">{r.roleName.replace('template-namespaced-resources___', '').replace('template-cluster-resources___', '')}</span>
-                        </div>
+                        {isClickableRole(r) ? (
+                          <Link
+                            to={getEditPath(r)}
+                            className="text-sm tracking-tight text-teal-700 hover:text-teal-900 hover:underline font-bold transition-colors"
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              const x = Math.min(rect.left, window.innerWidth - 300)
+                              setTooltip({ x, y: rect.bottom + 6, roleName: r.roleName, roleRefName: r.roleRefName })
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                          >
+                            {r.roleName}
+                          </Link>
+                        ) : r.isManaged ? (
+                          <span
+                            className="text-sm tracking-tight cursor-default"
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              const x = Math.min(rect.left, window.innerWidth - 300)
+                              setTooltip({ x, y: rect.bottom + 6, roleName: r.roleName, roleRefName: r.roleRefName })
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                          >
+                            {r.roleName}
+                          </span>
+                        ) : (
+                          <span className="text-sm tracking-tight text-gray-500">
+                            {r.roleName}
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <span className={`px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-normal border ${
@@ -143,6 +230,44 @@ export default function AccessAudit() {
           </div>
         </div>
       </div>
+
+      {tooltip && (() => {
+        const perms = getRolePerms(tooltip.roleRefName, tooltip.roleName)
+        const entries = Object.entries(perms)
+        const isClickable = !tooltip.roleName.endsWith(' (Cluster-wide)') &&
+          (tooltip.roleRefName
+            ? tooltip.roleRefName.startsWith(templateNamespacedResourceRolePrefix)
+            : true)
+        const shortName = tooltip.roleName
+        return (
+          <div
+            style={{ position: 'fixed', left: tooltip.x, top: tooltip.y, zIndex: 9999 }}
+            className="bg-white border border-gray-200 shadow-2xl rounded-xl p-3 w-72 pointer-events-none"
+          >
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+              <span className="text-xs font-black uppercase tracking-widest text-teal-700">{shortName}</span>
+              {isClickable && (
+                <span className="text-[10px] text-teal-500 font-bold ml-2 whitespace-nowrap">↗ click to edit</span>
+              )}
+            </div>
+            {entries.length === 0 ? (
+              <div className="text-xs text-gray-400 italic py-1">No permissions defined</div>
+            ) : (
+              <div className="flex flex-col gap-0.5 max-h-52 overflow-y-auto pr-1">
+                {entries.map(([res, p]) => (
+                  <div key={res} className="flex items-center justify-between py-0.5">
+                    <span className="text-gray-700 font-mono text-[11px] truncate mr-2">{res}</span>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {p.read && <span className="bg-cyan-100 text-cyan-700 px-1.5 py-0.5 rounded text-[10px] font-black">R</span>}
+                      {p.write && <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-black">W</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

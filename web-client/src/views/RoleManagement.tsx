@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useRbac, Rule } from '../hooks/useRbac';
 import { httpRequests } from '../services/httpRequests';
 import { FullScreenLoader } from '../components/Loader';
@@ -6,8 +7,10 @@ import { RESOURCE_TYPES_NAMESPACED, templateNamespacedResourceRolePrefix, resour
 
 export default function RoleManagement() {
   const { clusterRoles, refreshRbacData } = useRbac();
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const initializedFromUrl = useRef(false);
   
   const [newRoleName, setNewRoleName] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -19,9 +22,47 @@ export default function RoleManagement() {
     }), {})
   );
 
-  const templates = (clusterRoles || []).filter(cr => 
+  const templates = (clusterRoles || []).filter(cr =>
     cr.metadata.name.startsWith(templateNamespacedResourceRolePrefix)
   );
+
+  const mapRulesToPermissions = (rules: Rule[]) => {
+    const newPermissions = RESOURCE_TYPES_NAMESPACED.reduce((acc, resource) => ({
+      ...acc,
+      [resource]: { read: false, write: false }
+    }), {} as Record<string, { read: boolean; write: boolean }>);
+
+    rules.forEach(rule => {
+      const isRead = rule.verbs.includes('*') || rule.verbs.includes('get') || rule.verbs.includes('list') || rule.verbs.includes('watch');
+      const isWrite = rule.verbs.includes('*') || rule.verbs.includes('create') || rule.verbs.includes('update') || rule.verbs.includes('patch') || rule.verbs.includes('delete');
+
+      rule.resources.forEach(res => {
+        if (newPermissions[res]) {
+          if (isRead) newPermissions[res].read = true;
+          if (isWrite) newPermissions[res].write = true;
+        }
+      });
+    });
+
+    return newPermissions;
+  };
+
+  useEffect(() => {
+    if (initializedFromUrl.current || !clusterRoles) return
+    const params = new URLSearchParams(location.search)
+    const editParam = params.get('edit')
+    if (!editParam) { initializedFromUrl.current = true; return }
+    const fullName = templateNamespacedResourceRolePrefix + editParam
+    const role = clusterRoles.find(cr => cr.metadata.name === fullName)
+    if (role) {
+      setNewRoleName(editParam)
+      setIsEditing(true)
+      setEditingRoleName(role.metadata.name)
+      setPermissions(mapRulesToPermissions(role.rules))
+      setShowForm(true)
+    }
+    initializedFromUrl.current = true
+  }, [location.search, clusterRoles])
 
   const handlePermissionChange = (resource: string, type: 'read' | 'write') => {
     setPermissions(prev => ({
@@ -60,27 +101,6 @@ export default function RoleManagement() {
   const handleRoleNameChange = (val: string) => {
     const filtered = val.toLowerCase().replace(/[^a-z0-9-]/g, '');
     setNewRoleName(filtered);
-  };
-
-  const mapRulesToPermissions = (rules: Rule[]) => {
-    const newPermissions = RESOURCE_TYPES_NAMESPACED.reduce((acc, resource) => ({
-      ...acc,
-      [resource]: { read: false, write: false }
-    }), {} as Record<string, { read: boolean; write: boolean }>);
-
-    rules.forEach(rule => {
-      const isRead = rule.verbs.includes('*') || rule.verbs.includes('get') || rule.verbs.includes('list') || rule.verbs.includes('watch');
-      const isWrite = rule.verbs.includes('*') || rule.verbs.includes('create') || rule.verbs.includes('update') || rule.verbs.includes('patch') || rule.verbs.includes('delete');
-
-      rule.resources.forEach(res => {
-        if (newPermissions[res]) {
-          if (isRead) newPermissions[res].read = true;
-          if (isWrite) newPermissions[res].write = true;
-        }
-      });
-    });
-
-    return newPermissions;
   };
 
   const handleEditInitiate = (role: any) => {

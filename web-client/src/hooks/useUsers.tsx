@@ -49,11 +49,15 @@ function useUsersFromApi(): UserProvider {
 
   function fetchUsers(): void {
     setLoading(true)
-    httpClient.get('/api/list-users').then(res => {
-      setLoading(false)
-      setLoaded(true)
-      setUsers(res.data)
-    })
+    httpClient.get('/api/list-users')
+      .then(res => {
+        setLoaded(true)
+        setUsers(res.data)
+      })
+      .catch(err => {
+        console.error('Failed to fetch users', err)
+      })
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => {

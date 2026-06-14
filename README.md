@@ -1,7 +1,5 @@
 # Permission manager
 
-![flow](./docs/assets/flow.gif)
-
 Welcome to the **Permission Manager**! :tada: :tada:
 
 Permission Manager is an application developed by [SIGHUP](https://sighup.io) that enables a super-easy and user-friendly **RBAC management for Kubernetes**. If you are looking for a simple and intuitive way of managing your users within a Kubernetes cluster, this is the right place.
@@ -25,29 +23,44 @@ v6: add Access Audit, export gitops resource, web hook, can i
 
 v7: RBAC Visualizer, Bulk Operations + fixes
 
-docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v7 .
+v8: fix that, fix this ....
+
+docker buildx build --push --platform=linux/arm64,linux/amd64 --tag h2372/permission-manager:v8 .
 
 ## Screenshots
 
-### First Page
+### User Management
 
-![First Page](docs/assets/first-page.png)
+![User List](docs/assets/1.PNG)
+
+### User's Kubeconfig / User Settings
+
+![Kubeconfig Generator](docs/assets/1.1.PNG)
 
 ### Creating a user
 
-![Creating a user](docs/assets/create-user.png)
+![Create user Sumary](docs/assets/2.PNG)
 
-### Creating a user - Summary
+### Permission Manager
 
-![Create user Sumary](docs/assets/create-user-summary.png)
+![Object Selection](docs/assets/3.PNG)
+![Permission Selection](docs/assets/4.PNG)
 
-### User's Kubeconfig
+### Namespace Management
 
-![User's Kubeconfig](docs/assets/users-kubeconfig.png)
+![Namespace Management](docs/assets/5.PNG)
 
-### Deleting a user
+### Access Audit
 
-![Deleting a user](docs/assets/delete-user.png)
+![Access Audit](docs/assets/8.PNG)
+
+### Visualizer
+
+![Visualizer](docs/assets/6.PNG)
+
+### Role Management
+
+![Role Management](docs/assets/7.PNG)
 
 ## Installation
 
