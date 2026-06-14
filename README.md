@@ -6,7 +6,7 @@ Permission Manager is an application developed by [SIGHUP](https://sighup.io) th
 
 With Permission Manager, you can create users, assign namespaces/permissions, and distribute Kubeconfig YAML files via a nice&easy web UI.
 
-The lastest image is: h2372/permission-manager:v6
+The lastest image is: h2372/permission-manager:v8
 
 ## Changelog tags:
 v1: fix some minor bugs, add support for k8s v1.35
