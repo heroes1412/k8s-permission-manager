@@ -7,7 +7,7 @@ WORKDIR /app
 RUN yarn install && yarn build
 
 ## BACKEND ##
-FROM golang:1.23-alpine AS go-base
+FROM golang:1.26-alpine AS go-base
 
 ENV GOCACHE=/tmp/.go/cache
 ENV GOMODCACHE=/tmp/.go/modcache

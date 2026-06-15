@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { httpRequests } from '../services/httpRequests'
 import { FullScreenLoader } from '../components/Loader'
@@ -30,8 +30,26 @@ export default function AccessAudit() {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [search, setSearch] = useState('')
+  const [showExternal, setShowExternal] = useState(false)
 
   const { clusterRoles } = useRbac()
+
+  const hasExternalRecords = records.some(r => !r.isManaged)
+
+  const filteredRecords = useMemo(() => {
+    let result = showExternal ? records : records.filter(r => r.isManaged)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(r =>
+        r.subjectName.toLowerCase().includes(q) ||
+        r.roleName.toLowerCase().includes(q) ||
+        r.managedBy.toLowerCase().includes(q) ||
+        r.subjectKind.toLowerCase().includes(q)
+      )
+    }
+    return result
+  }, [records, search, showExternal])
 
   // Look up the ClusterRole object: prefer exact match by roleRefName, fall back to prefix reconstruction
   const getFullRoleName = (roleRefName?: string, roleName?: string) => {
@@ -148,6 +166,30 @@ export default function AccessAudit() {
              </div>
           </div>
 
+          {records.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search by subject, role, or source..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="bg-gray-50 border-2 border-gray-100 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-teal-500 transition-all w-full max-w-sm"
+              />
+              {hasExternalRecords && (
+                <button
+                  onClick={() => setShowExternal(v => !v)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-colors ${
+                    showExternal
+                      ? 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'
+                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {showExternal ? 'Hide External' : 'Show External'}
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="my-6 overflow-x-auto">
             <table className="text-left w-full border-collapse min-w-[800px]">
               <thead>
@@ -166,8 +208,18 @@ export default function AccessAudit() {
                       No RBAC bindings found for this namespace.
                     </td>
                   </tr>
+                ) : filteredRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-gray-400 italic font-medium text-base">
+                      {search.trim()
+                        ? 'No results match your search.'
+                        : !showExternal && hasExternalRecords
+                          ? 'No app-managed bindings found. Click "Show External" to see all bindings.'
+                          : 'No bindings found.'}
+                    </td>
+                  </tr>
                 ) : (
-                  records.map((r, i) => (
+                  filteredRecords.map((r, i) => (
                     <tr key={i} className="hover:bg-gray-50/50 border-b border-gray-100 last:border-0 transition-colors">
                       <td className="py-4 px-6">
                         <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-tighter ${

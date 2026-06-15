@@ -4,9 +4,35 @@ this guide refer to installing the permission manager on a running cluster
 
 ## Install with kubectl
 
+- Create the Namespace where the application will be deployed
+
 ``` shell
-kubectl apply -f k8s-kubernetes-deployment/seed/
-kubectl apply -f k8s-kubernetes-deployment/
+kubectl create namespace permission-manager
+```
+
+- Deploy the application's secret using the manifest that you can find in `deployments/kubernetes/secret.yml` with the configuration for the application, for example:
+
+``` shell
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: permission-manager
+  namespace: permission-manager
+type: Opaque
+stringData:
+  PORT: "4000" # port where server is exposed
+  CLUSTER_NAME: "my-cluster" # name of the cluster to use in the generated kubeconfig file
+  CONTROL_PLANE_ADDRESS: "https://172.17.0.3:6443" # full address of the control plane to use in the generated kubeconfig file
+  BASIC_AUTH_PASSWORD: "changeMe" # password used by basic auth (username is `admin`)
+```
+
+### Deploy the application
+
+``` shell
+kubectl apply -f https://github.com/sighupio/permission-manager/releases/download/v1.9.0/crd.yml
+kubectl apply -f https://github.com/sighupio/permission-manager/releases/download/v1.9.0/seed.yml
+kubectl apply -f https://github.com/sighupio/permission-manager/releases/download/v1.9.0/deploy.yml
 ```
 
 ### Visit the application

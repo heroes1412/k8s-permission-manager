@@ -1,6 +1,6 @@
 module sighupio/permission-manager
 
-go 1.23
+go 1.26
 
 require (
 	github.com/go-playground/validator v9.31.0+incompatible

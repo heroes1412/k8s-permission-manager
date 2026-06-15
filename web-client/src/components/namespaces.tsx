@@ -2,6 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { httpRequests } from '../services/httpRequests';
 import { FullScreenLoader } from './Loader';
 import { useSettings } from '../hooks/useSettings';
+import ConfirmModal from './ConfirmModal';
+import Toast from './Toast';
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void }
+type ToastState = { message: string; type: 'success' | 'error' | 'info' }
 
 export default function Namespaces() {
   const { settings } = useSettings();
@@ -12,6 +17,9 @@ export default function Namespaces() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [formTouched, setFormTouched] = useState<boolean>(false);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState('');
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [toastState, setToastState] = useState<ToastState | null>(null);
 
   const fetchNamespaces = async () => {
     setIsLoading(true);
@@ -31,10 +39,10 @@ export default function Namespaces() {
 
   const validateNamespace = useCallback(() => {
     if (!newNamespace.trim()) {
-       setValidationError(null);
-       return false;
+      setValidationError(null);
+      return false;
     }
-    
+
     if (newNamespace.length < 1 || newNamespace.length > 63) {
       setValidationError('Required to be between 1 and 63 characters long');
       return false;
@@ -64,7 +72,7 @@ export default function Namespaces() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTouched) {
-        setFormTouched(true);
+      setFormTouched(true);
     }
 
     if (!validateNamespace()) {
@@ -85,24 +93,31 @@ export default function Namespaces() {
     }
   };
 
-  const handleDelete = async (name: string) => {
-    const isConfirmed = window.confirm(`Are you sure you want to delete namespace "${name}"?\nPermission Manager will first check if any pods are still running inside.`);
-    if (!isConfirmed) return;
-
-    setIsLoading(true);
-    setApiError(null);
-    try {
-      await httpRequests.namespaceDelete(name);
-      await fetchNamespaces();
-    } catch (err: any) {
-      if (err?.response?.data?.errorMsg) {
-        window.alert(`Cannot delete namespace:\n${err.response.data.errorMsg}`);
-      } else {
-        setApiError(err?.response?.data?.message || err.message);
+  const handleDelete = (name: string) => {
+    setConfirmState({
+      title: 'Delete Namespace',
+      message: `Are you sure you want to delete namespace "${name}"?\nPermission Manager will first check if any pods are still running inside.`,
+      onConfirm: async () => {
+        setIsLoading(true);
+        setApiError(null);
+        try {
+          await httpRequests.namespaceDelete(name);
+          await fetchNamespaces();
+        } catch (err: any) {
+          if (err?.response?.data?.errorMsg) {
+            setToastState({ message: `Cannot delete namespace: ${err.response.data.errorMsg}`, type: 'error' });
+          } else {
+            setApiError(err?.response?.data?.message || err.message);
+          }
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
-    }
+    });
   };
+
+  const filteredNamespaces = search.trim()
+    ? namespaces.filter(ns => ns.includes(search.toLowerCase()))
+    : namespaces;
 
   const isSaveDisabled = validationError !== null || !newNamespace.trim() || isLoading;
 
@@ -110,6 +125,17 @@ export default function Namespaces() {
     <div className="bg-gray-200 pt-16 min-h-screen">
       <div className="max-w-3xl mx-auto px-4">
         {isLoading && <FullScreenLoader />}
+        {confirmState && (
+          <ConfirmModal
+            isOpen={true}
+            title={confirmState.title}
+            message={confirmState.message}
+            onConfirm={confirmState.onConfirm}
+            onCancel={() => setConfirmState(null)}
+          />
+        )}
+        {toastState && <Toast message={toastState.message} type={toastState.type} onDismiss={() => setToastState(null)} />}
+
         <div className="bg-white shadow-xl rounded-xl p-8 mb-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-6 gap-4">
             <h2 className="text-2xl text-gray-800 font-black flex items-center tracking-tight">
@@ -117,7 +143,7 @@ export default function Namespaces() {
               Namespaces
             </h2>
             {!showForm && (
-              <button 
+              <button
                 onClick={() => { setShowForm(true); setNewNamespace(''); setFormTouched(false); setValidationError(null); setApiError(null); }}
                 className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-black py-2.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center text-sm tracking-widest uppercase"
               >
@@ -152,7 +178,7 @@ export default function Namespaces() {
                       value={newNamespace}
                       onChange={(e) => {
                         if (!formTouched) {
-                            setFormTouched(true);
+                          setFormTouched(true);
                         }
                         const filtered = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
                         setNewNamespace(filtered);
@@ -174,53 +200,72 @@ export default function Namespaces() {
               </div>
             </form>
           ) : (
-            <div className="my-6 overflow-x-auto">
-              <table className="text-left w-full border-collapse min-w-[500px]">
-                <thead>
-                  <tr className="bg-gray-50/80 border-b border-gray-100">
-                    <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">
-                      Namespace Identity
-                    </th>
-                    <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest text-right w-1 whitespace-nowrap">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {namespaces.length === 0 ? (
-                    <tr>
-                      <td colSpan={2} className="py-12 text-center text-gray-400 italic font-medium text-base">
-                        No active namespaces found.
-                      </td>
+            <>
+              {namespaces.length > 0 && (
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    placeholder="Search namespaces..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full max-w-xs bg-gray-50 border-2 border-gray-100 px-4 py-2 rounded-xl text-sm font-bold text-gray-700 focus:outline-none focus:border-teal-500 transition-all"
+                  />
+                </div>
+              )}
+              <div className="my-6 overflow-x-auto">
+                <table className="text-left w-full border-collapse min-w-[500px]">
+                  <thead>
+                    <tr className="bg-gray-50/80 border-b border-gray-100">
+                      <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest">
+                        Namespace Identity
+                      </th>
+                      <th className="py-4 px-6 font-black uppercase text-xs text-gray-500 tracking-widest text-right w-1 whitespace-nowrap">
+                        Actions
+                      </th>
                     </tr>
-                  ) : (
-                    namespaces.map((ns) => {
-                      const protectedNamespaces = settings.SYSTEM_PROTECTED_NAMESPACES ? settings.SYSTEM_PROTECTED_NAMESPACES.split(',') : [];
-                      const isProtected = protectedNamespaces.includes(ns);
-                      return (
-                      <tr key={ns} className="hover:bg-gray-50/50 border-b border-gray-100 last:border-0 transition-colors">
-                        <td className="py-4 px-6 text-gray-800 font-bold text-base break-all">
-                          {ns}
-                        </td>
-                        <td className="py-4 px-6 text-right w-1 whitespace-nowrap">
-                          {isProtected ? (
-                            <span className="text-[10px] text-gray-300 font-black uppercase tracking-tighter">System Protected</span>
-                          ) : (
-                            <button
-                              onClick={() => handleDelete(ns)}
-                              className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"
-                            >
-                              Delete
-                            </button>
-                          )}
+                  </thead>
+                  <tbody className="text-sm">
+                    {namespaces.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="py-12 text-center text-gray-400 italic font-medium text-base">
+                          No active namespaces found.
                         </td>
                       </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : filteredNamespaces.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="py-12 text-center text-gray-400 italic font-medium text-base">
+                          No namespaces match your search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredNamespaces.map((ns) => {
+                        const protectedNamespaces = settings.SYSTEM_PROTECTED_NAMESPACES ? settings.SYSTEM_PROTECTED_NAMESPACES.split(',') : [];
+                        const isProtected = protectedNamespaces.includes(ns);
+                        return (
+                          <tr key={ns} className="hover:bg-gray-50/50 border-b border-gray-100 last:border-0 transition-colors">
+                            <td className="py-4 px-6 text-gray-800 font-bold text-base break-all">
+                              {ns}
+                            </td>
+                            <td className="py-4 px-6 text-right w-1 whitespace-nowrap">
+                              {isProtected ? (
+                                <span className="text-[10px] text-gray-300 font-black uppercase tracking-tighter">System Protected</span>
+                              ) : (
+                                <button
+                                  onClick={() => handleDelete(ns)}
+                                  className="text-red-500 hover:text-red-700 font-black text-xs uppercase tracking-tighter"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

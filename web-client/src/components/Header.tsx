@@ -44,11 +44,9 @@ export default function Header() {
             <Link to="/visualizer" className={navLinkClass('/visualizer')}>
               Visualizer
             </Link>
-            {settings.GROUPS_ENABLED === 'true' && (
-              <Link to="/roles" className={navLinkClass('/roles')}>
-                Roles
-              </Link>
-            )}
+            <Link to="/roles" className={navLinkClass('/roles')}>
+              Roles
+            </Link>
             <Link to="/settings" className={navLinkClass('/settings')}>
               Settings
             </Link>
@@ -89,11 +87,9 @@ export default function Header() {
             <Link to="/visualizer" onClick={() => setIsMenuOpen(false)} className={navLinkClass('/visualizer')}>
               Visualizer
             </Link>
-            {settings.GROUPS_ENABLED === 'true' && (
-              <Link to="/roles" onClick={() => setIsMenuOpen(false)} className={navLinkClass('/roles')}>
-                Roles
-              </Link>
-            )}
+            <Link to="/roles" onClick={() => setIsMenuOpen(false)} className={navLinkClass('/roles')}>
+              Roles
+            </Link>
             <Link to="/settings" onClick={() => setIsMenuOpen(false)} className={navLinkClass('/settings')}>
               Settings
             </Link>

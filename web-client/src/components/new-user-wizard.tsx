@@ -5,6 +5,9 @@ import { useUsers } from '../hooks/useUsers'
 import { httpRequests } from "../services/httpRequests"
 import GroupMultiSelect from "./GroupMultiSelect"
 import { useSettings } from '../hooks/useSettings'
+import Toast from './Toast'
+
+type ToastState = { message: string; type: 'success' | 'error' | 'info' }
 
 export default function NewUserWizard() {
   const { settings } = useSettings()
@@ -16,6 +19,7 @@ export default function NewUserWizard() {
   const [usernameError, setUsernameError] = useState<string | null>(null)
   const [formTouched, setFormTouched] = useState<boolean>(false)
   const [showLoader, setShowLoader] = useState<boolean>(false)
+  const [toastState, setToastState] = useState<ToastState | null>(null)
   const { users } = useUsers()
 
   const validateUsername = useCallback(() => {
@@ -69,7 +73,7 @@ export default function NewUserWizard() {
     } catch (err: any) {
       console.error(err)
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message;
-      window.alert(`Error creating user: ${errorMsg}`);
+      setToastState({ message: `Error creating user: ${errorMsg}`, type: 'error' });
     } finally {
       setShowLoader(false)
     }
@@ -78,6 +82,7 @@ export default function NewUserWizard() {
   return (
     <div className="bg-apple-lightGray min-h-screen py-16 flex flex-col items-center px-4">
       {showLoader && <FullScreenLoader />}
+      {toastState && <Toast message={toastState.message} type={toastState.type} onDismiss={() => setToastState(null)} />}
       <div className="w-full max-w-[980px]">
         <h2 className="text-apple-nearBlack text-[40px] md:text-[56px] font-display font-semibold leading-[1.07] tracking-[-0.28px] text-center mb-12">
           Create User
@@ -123,7 +128,7 @@ export default function NewUserWizard() {
                 type="number"
                 min="0"
                 value={maxDays}
-                onChange={e => setMaxDays(parseInt(e.target.value) || 0)}
+                onChange={e => setMaxDays(Math.max(0, parseInt(e.target.value) || 0))}
               />
               <p className="mt-1 text-[12px] text-apple-textTertiaryLight font-medium italic">User will expire in {maxDays} days from now.</p>
             </div>
